@@ -59,22 +59,17 @@ export const BuyTicket: React.FC = () => {
     try {
       console.log('Creating real blockchain transaction...');
       
-      // Create treasury public key
-      const treasuryPublicKey = new PublicKey(COMMISSION_WALLET);
-      
-      // Create transaction
+      // Create transaction (service içinde prize pool + komisyon ayrıştırılır)
       const transaction = await solanaService.buyTicket(
         publicKey,
         quantity,
         ticketPriceSOL,
-        treasuryPublicKey
       );
       
       console.log('Transaction created, sending to blockchain...');
       console.log('Transaction object:', transaction);
       console.log('From:', publicKey.toString());
-      console.log('To:', treasuryPublicKey.toString());
-      console.log('Amount:', quantity * ticketPriceSOL, 'SOL');
+      console.log('Amount (gross per ticket):', ticketPriceSOL, 'SOL');
       console.log('Current SOL price:', solPriceUSD, 'USD');
       console.log('Program ID:', solanaService.getProgramId().toString());
       

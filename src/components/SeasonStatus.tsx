@@ -103,10 +103,9 @@ export const SeasonStatus: React.FC = () => {
     return () => clearInterval(timer);
   }, [seasonEndTime]);
 
-  // Calculate prize pool after commission
-  const totalRevenue = seasonStatus.totalTicketsSold * SEASON_CONFIG.TICKET_PRICE_USD;
-  const totalCommission = totalRevenue * (COMMISSION_PERCENTAGE / 100);
-  const netPrizePool = totalRevenue - totalCommission;
+  // Prize pool = sadece brüt bilet bedelleri (komisyon ayrıdır ve ek ücret olarak tahsil edilir)
+  const grossRevenue = seasonStatus.totalTicketsSold * SEASON_CONFIG.TICKET_PRICE_USD;
+  const netPrizePool = grossRevenue; // komisyon düşülmez
   const netPrizePoolSOL = netPrizePool / solPriceUSD;
 
   const getStatusColor = (status: string) => {

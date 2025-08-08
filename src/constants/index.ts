@@ -7,6 +7,8 @@ export const TICKET_PRICE_USD = 1.0; // USD
 // Commission settings
 export const COMMISSION_PERCENTAGE = 10; // 10%
 export const COMMISSION_WALLET = "43kyNFpG5sje54EZYWQvRXuQjerCYvfWv715mPucnypo"; // Admin wallet address
+// Prize havuzu (kasa) adresi. Ayrı bir adres sağlayana kadar admin adresi ile aynı tutulur.
+export const TREASURY_WALLET = COMMISSION_WALLET;
 
 export const SEASON_CONFIG = {
   DURATION_DAYS: 7, // Season duration in days

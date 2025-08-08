@@ -1,6 +1,6 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js';
 import { AnchorProvider, Program, Idl } from '@project-serum/anchor';
-import { PROGRAM_ID, NETWORK_CONFIG, COMMISSION_WALLET } from '../constants';
+import { PROGRAM_ID, NETWORK_CONFIG, COMMISSION_WALLET, TREASURY_WALLET, TICKET_PRICE_USD } from '../constants';
 import idlJson from '../types/idl.json';
 
 function toNum(value: any): number {
@@ -52,11 +52,22 @@ export class SolanaService {
     buyerPublicKey: PublicKey,
     quantity: number,
     ticketPrice: number,
-    treasuryPublicKey: PublicKey
   ): Promise<Transaction> {
     const tx = new Transaction();
     const seasonId = 1;
-    const totalLamports = Math.floor(ticketPrice * quantity * LAMPORTS_PER_SOL);
+    // Brüt bilet bedeli = $1.00
+    // Komisyon = brütün %10'u
+    // Tahsilat: brüt + komisyon (kullanıcıdan çekilen toplam)
+    // Prize pool'a eklenen: sadece brüt
+    const commissionRate = 0.01 * (typeof (COMMISSION_WALLET) === 'string' ? 10 : 10); // fallback
+    const grossPerTicketSol = ticketPrice; // $1 karşılığı SOL
+    const commissionPerTicketSol = grossPerTicketSol * (commissionRate * 10); // düzeltilecek aşağıda
+    // Not: Komisyon yüzdesini constants'tan okuyacağız, doğru hesap aşağıda yeniden yapılır
+
+    const commissionPercent = 10; // temporary; UI'deki COMMISSION_PERCENTAGE ile uyumlu
+    const grossLamports = Math.floor(grossPerTicketSol * quantity * LAMPORTS_PER_SOL);
+    const commissionLamports = Math.floor((grossPerTicketSol * (commissionPercent / 100)) * quantity * LAMPORTS_PER_SOL);
+    const totalLamports = grossLamports + commissionLamports; // kullanıcıdan tahsil edilecek toplam
 
     const programId = new PublicKey(PROGRAM_ID);
     const programInfo = await this.connection.getAccountInfo(programId);
@@ -65,19 +76,32 @@ export class SolanaService {
     try {
       if (!programInfo || !programInfo.executable) throw new Error('Program not found on this cluster');
 
+      const treasuryPk = new PublicKey(TREASURY_WALLET);
+      const commissionPk = new PublicKey(COMMISSION_WALLET);
+      // Program tarafında komisyon ayrışması yoksa, fallback ile iki transfer yapacağız
+      // Anchor ix başarısız olursa aşağıdaki fallback çalışır
       const ix = await (this.program as any).methods
         .buyTicket(quantity)
         .accounts({
           buyer: buyerPublicKey,
-          treasury: treasuryPublicKey,
+          treasury: treasuryPk,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
       tx.add(ix);
     } catch (_) {
-      // Fallback: simple transfer + memo (so everyone can aggregate on-chain)
-      const transferIx = SystemProgram.transfer({ fromPubkey: buyerPublicKey, toPubkey: treasuryPublicKey, lamports: totalLamports });
-      tx.add(transferIx);
+      // Fallback: iki ayrı transfer + memo
+      // 1) Brüt bilet bedeli prize pool (treasury)'ye
+      const treasuryPk = new PublicKey(TREASURY_WALLET);
+      const transferGross = SystemProgram.transfer({ fromPubkey: buyerPublicKey, toPubkey: treasuryPk, lamports: grossLamports });
+      tx.add(transferGross);
+      // 2) Komisyon admin cüzdanına
+      const commissionPk = new PublicKey(COMMISSION_WALLET);
+      if (commissionLamports > 0) {
+        const transferCommission = SystemProgram.transfer({ fromPubkey: buyerPublicKey, toPubkey: commissionPk, lamports: commissionLamports });
+        tx.add(transferCommission);
+      }
+      // Memo sadece bilet bilgisi için (brütü yansıtıyoruz)
       tx.add(this.buildMemoIx(seasonId, quantity, totalLamports));
       usedFallback = true;
     }
@@ -87,7 +111,7 @@ export class SolanaService {
     tx.feePayer = buyerPublicKey;
 
     if (usedFallback) {
-      console.log('Using fallback: transfer + memo');
+      console.log('Using fallback: split transfer (gross to treasury + commission to admin) + memo');
     } else {
       console.log('Using Anchor program instruction');
     }
@@ -186,7 +210,7 @@ export class SolanaService {
         return {
           seasonId,
           totalTicketsSold: ticketsSold,
-          totalPrizePool: ticketsSold * 1.0, // $1 per ticket (gross). UI düşecek
+          totalPrizePool: ticketsSold * 1.0, // $1 per ticket (gross)
           isActive: true,
           endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         };
