@@ -270,8 +270,8 @@ export const MyTickets: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    </div)
-                  )}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

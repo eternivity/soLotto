@@ -6,7 +6,6 @@ import { solanaService } from '../services/solanaService';
 
 export const SeasonStatus: React.FC = () => {
   const [solPriceUSD, setSolPriceUSD] = useState(100);
-  const [ticketPriceSOL, setTicketPriceSOL] = useState(0.01);
   
   // Season end time - 7 days from now, fixed and memoized
   const seasonEndTime = useMemo(() => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), []);
@@ -31,10 +30,9 @@ export const SeasonStatus: React.FC = () => {
       try {
         // Load prices
         const solPrice = await priceService.getSolPriceUSD();
-        const ticketPrice = await priceService.getTicketPriceSOL();
+        await priceService.getTicketPriceSOL();
         
         setSolPriceUSD(solPrice);
-        setTicketPriceSOL(ticketPrice);
         
         // Load season data from blockchain
         const seasonData = await solanaService.getSeasonData(1);
