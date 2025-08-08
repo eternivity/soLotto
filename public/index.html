@@ -2,42 +2,193 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='bg' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' style='stop-color:%239945FF'/><stop offset='100%' style='stop-color:%2314F195'/></linearGradient></defs><circle cx='16' cy='16' r='15' fill='url(%23bg)' stroke='%23333' stroke-width='1'/><circle cx='12' cy='12' r='3' fill='white' stroke='%23333' stroke-width='0.5'/><circle cx='20' cy='12' r='3' fill='white' stroke='%23333' stroke-width='0.5'/><circle cx='16' cy='20' r='3' fill='white' stroke='%23333' stroke-width='0.5'/><text x='12' y='14' text-anchor='middle' font-family='Arial' font-size='6' font-weight='bold' fill='%23333'>7</text><text x='20' y='14' text-anchor='middle' font-family='Arial' font-size='6' font-weight='bold' fill='%23333'>L</text><text x='16' y='22' text-anchor='middle' font-family='Arial' font-size='6' font-weight='bold' fill='%23333'>O</text><circle cx='8' cy='8' r='1' fill='white' opacity='0.8'/><circle cx='24' cy='8' r='1' fill='white' opacity='0.8'/><circle cx='8' cy='24' r='1' fill='white' opacity='0.8'/><circle cx='24' cy='24' r='1' fill='white' opacity='0.8'/></svg>" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
-      content="Web site created using create-react-app"
+      content="soLotto - Decentralized lottery on Solana blockchain"
     />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
-
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>React App</title>
+    
+    <!-- Prevent MetaMask and other Ethereum wallet conflicts -->
+    <meta name="web3-wallet" content="solana" />
+    <meta name="blockchain" content="solana" />
+    <meta name="ethereum-compatible" content="false" />
+    <meta name="wallet-connect" content="solana-only" />
+    
+    <!-- Content Security Policy to block MetaMask -->
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval'; object-src 'none'; connect-src 'self' https://api.devnet.solana.com https://explorer.solana.com wss://api.devnet.solana.com ws://api.devnet.solana.com https://solana-mainnet.g.alchemy.com wss://solana-mainnet.g.alchemy.com https://api.coingecko.com https://api.mainnet-beta.solana.com wss://api.mainnet-beta.solana.com https://solana-api.projectserum.com wss://solana-api.projectserum.com;">
+    
+    <title>soLotto - Solana Lottery</title>
+    
+    <!-- Prevent MetaMask injection - Nuclear Version -->
+    <script>
+      (function() {
+        'use strict';
+        
+        // Immediately disable ethereum object
+        if (typeof window !== 'undefined') {
+          // Override ethereum object before any injection
+          Object.defineProperty(window, 'ethereum', {
+            get: function() {
+              return undefined;
+            },
+            set: function() {
+              // Do nothing - prevent setting
+              return;
+            },
+            configurable: false,
+            enumerable: false
+          });
+          
+          // Override web3 object as well
+          Object.defineProperty(window, 'web3', {
+            get: function() {
+              return undefined;
+            },
+            set: function() {
+              return;
+            },
+            configurable: false,
+            enumerable: false
+          });
+          
+          // Override any MetaMask related properties
+          const metamaskProperties = ['ethereum', 'web3', 'MetaMask', 'metamask', 'ethereumProvider'];
+          metamaskProperties.forEach(prop => {
+            try {
+              Object.defineProperty(window, prop, {
+                get: function() {
+                  return undefined;
+                },
+                set: function() {
+                  return;
+                },
+                configurable: false,
+                enumerable: false
+              });
+            } catch (e) {
+              // Ignore errors
+            }
+          });
+          
+          // Prevent MetaMask from injecting by overriding Object.defineProperty
+          const originalDefineProperty = Object.defineProperty;
+          Object.defineProperty = function(obj, prop, descriptor) {
+            if (obj === window && (prop === 'ethereum' || prop === 'web3' || prop === 'MetaMask' || prop === 'ethereumProvider')) {
+              return obj; // Do nothing
+            }
+            return originalDefineProperty.call(this, obj, prop, descriptor);
+          };
+          
+          // Override Object.defineProperties as well
+          const originalDefineProperties = Object.defineProperties;
+          Object.defineProperties = function(obj, props) {
+            if (obj === window) {
+              const filteredProps = {};
+              for (const key in props) {
+                if (!['ethereum', 'web3', 'MetaMask', 'ethereumProvider'].includes(key)) {
+                  filteredProps[key] = props[key];
+                }
+              }
+              return originalDefineProperties.call(this, obj, filteredProps);
+            }
+            return originalDefineProperties.call(this, obj, props);
+          };
+          
+          // Override Object.setPrototypeOf to prevent prototype pollution
+          const originalSetPrototypeOf = Object.setPrototypeOf;
+          Object.setPrototypeOf = function(obj, prototype) {
+            if (obj === window && prototype && prototype.ethereum) {
+              return obj; // Do nothing
+            }
+            return originalSetPrototypeOf.call(this, obj, prototype);
+          };
+          
+          // Override Object.create to prevent ethereum object creation
+          const originalCreate = Object.create;
+          Object.create = function(proto, propertiesObject) {
+            if (proto && (proto.ethereum || proto.web3)) {
+              return {}; // Return empty object
+            }
+            return originalCreate.call(this, proto, propertiesObject);
+          };
+          
+          // Monitor for injection attempts
+          const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+              if (mutation.type === 'childList') {
+                mutation.addedNodes.forEach(function(node) {
+                  if (node.tagName === 'SCRIPT' && node.src && 
+                      (node.src.includes('metamask') || node.src.includes('ethereum'))) {
+                    node.remove();
+                  }
+                });
+              }
+            });
+          });
+          
+          // Start observing
+          observer.observe(document, {
+            childList: true,
+            subtree: true
+          });
+          
+          // Clean up on page load
+          window.addEventListener('load', function() {
+            metamaskProperties.forEach(prop => {
+              if (window[prop]) {
+                delete window[prop];
+              }
+            });
+          });
+          
+          // Clean up on DOMContentLoaded
+          document.addEventListener('DOMContentLoaded', function() {
+            metamaskProperties.forEach(prop => {
+              if (window[prop]) {
+                delete window[prop];
+              }
+            });
+          });
+          
+          // Periodic cleanup every 500ms
+          setInterval(function() {
+            metamaskProperties.forEach(prop => {
+              if (window[prop]) {
+                delete window[prop];
+              }
+            });
+          }, 500);
+          
+          // Override window.addEventListener to prevent MetaMask listeners
+          const originalAddEventListener = window.addEventListener;
+          window.addEventListener = function(type, listener, options) {
+            if (type === 'message' && listener.toString().includes('ethereum')) {
+              return; // Don't add MetaMask message listeners
+            }
+            return originalAddEventListener.call(this, type, listener, options);
+          };
+          
+          // Override window.postMessage to prevent MetaMask communication
+          const originalPostMessage = window.postMessage;
+          window.postMessage = function(message, targetOrigin, transfer) {
+            if (message && (message.data && message.data.type === 'metamask' || 
+                message.type === 'metamask' || 
+                message.source && message.source.includes('metamask'))) {
+              return; // Don't send MetaMask messages
+            }
+            return originalPostMessage.call(this, message, targetOrigin, transfer);
+          };
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
-
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
-
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
   </body>
 </html>

@@ -1,46 +1,107 @@
-# Getting Started with Create React App
+# soLotto 🎰
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Solana Devnet üzerinde çalışan merkeziyetsiz piyango uygulaması.
 
-## Available Scripts
+## 🚀 Özellikler
 
-In the project directory, you can run:
+- **Cüzdan Bağlantısı**: Phantom ve Solflare cüzdan desteği
+- **Sezon Sistemi**: Her sezon 7 gün sürer ve 100 bilet satılır
+- **Gerçek Zamanlı Sayaç**: Sezon bitimine kalan süre
+- **Bilet Alma**: 0.1 SOL karşılığında bilet satın alma
+- **Kazanan Geçmişi**: Önceki sezonların kazananları
+- **Responsive Tasarım**: Mobil ve masaüstü uyumlu
 
-### `npm start`
+## 🛠️ Teknolojiler
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **Frontend**: React + TypeScript
+- **Styling**: Tailwind CSS
+- **Blockchain**: Solana Web3.js
+- **Wallet**: Solana Wallet Adapter
+- **Network**: Solana Devnet
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## 📦 Kurulum
 
-### `npm test`
+1. Projeyi klonlayın:
+```bash
+git clone https://github.com/your-username/solotto.git
+cd solotto
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. Bağımlılıkları yükleyin:
+```bash
+npm install
+```
 
-### `npm run build`
+3. Uygulamayı başlatın:
+```bash
+npm start
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+4. Tarayıcınızda `http://localhost:3000` adresini açın.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 🔗 Program ID
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Smart Contract Program ID: `H8EdkWUBqV2VriBg2jQeFSBp2sDMqDM2yHECX7vogWUp`
 
-### `npm run eject`
+## 🎯 Kullanım
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+1. **Cüzdan Bağlama**: Sağ üstteki "Cüzdan Bağla" butonuna tıklayın
+2. **Bilet Alma**: "Bilet Al" butonuna tıklayarak 0.1 SOL karşılığında bilet satın alın
+3. **Sezon Takibi**: Sol tarafta sezon durumunu ve kalan süreyi takip edin
+4. **Kazananları Görme**: Sağ tarafta önceki sezonların kazananlarını görün
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## ⚠️ Önemli Notlar
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+- Bu uygulama **sadece test amaçlıdır** ve Solana Devnet üzerinde çalışır
+- Gerçek SOL kullanılmaz, sadece test SOL'ları kullanılır
+- Cüzdanınızda Devnet SOL'ları olduğundan emin olun
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## 🔧 Geliştirme
 
-## Learn More
+### Proje Yapısı
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```
+src/
+├── components/          # React bileşenleri
+│   ├── WalletProvider.tsx
+│   ├── WalletConnect.tsx
+│   ├── SeasonStatus.tsx
+│   ├── BuyTicket.tsx
+│   ├── Winners.tsx
+│   └── Footer.tsx
+├── types/              # TypeScript tip tanımları
+│   └── index.ts
+├── constants/          # Uygulama sabitleri
+│   └── index.ts
+├── App.tsx            # Ana uygulama bileşeni
+└── index.tsx          # Giriş noktası
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Smart Contract Entegrasyonu
+
+Şu anda uygulama simüle edilmiş verilerle çalışmaktadır. Gerçek smart contract entegrasyonu için:
+
+1. Anchor programınızı deploy edin
+2. `constants/index.ts` dosyasındaki `PROGRAM_ID`'yi güncelleyin
+3. `BuyTicket.tsx` bileşeninde gerçek transaction'ları implement edin
+
+## 📄 Lisans
+
+MIT License
+
+## 🤝 Katkıda Bulunma
+
+1. Fork yapın
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Commit yapın (`git commit -m 'Add amazing feature'`)
+4. Push yapın (`git push origin feature/amazing-feature`)
+5. Pull Request oluşturun
+
+## 📞 İletişim
+
+- GitHub: [@your-username](https://github.com/your-username)
+- Email: your-email@example.com
+
+---
+
+**Not**: Bu proje eğitim amaçlıdır ve gerçek para ile oynanmamalıdır.
