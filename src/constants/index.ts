@@ -18,7 +18,7 @@ export const SEASON_CONFIG = {
 };
 
 export const NETWORK_CONFIG = {
-  endpoint: "https://api.devnet.solana.com",
+  endpoint: "https://api.testnet.solana.com",
   commitment: "confirmed" as const,
 };
 
