@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SeasonStatus as SeasonStatusType } from '../types';
-import { SEASON_CONFIG, COMMISSION_PERCENTAGE, TICKET_PRICE_USD } from '../constants';
+import { SEASON_CONFIG, COMMISSION_PERCENTAGE } from '../constants';
 import { priceService } from '../services/priceService';
 import { solanaService } from '../services/solanaService';
 
@@ -8,8 +8,8 @@ export const SeasonStatus: React.FC = () => {
   const [solPriceUSD, setSolPriceUSD] = useState(100);
   const [ticketPriceSOL, setTicketPriceSOL] = useState(0.01);
   
-  // Season end time - 7 days from now, fixed
-  const seasonEndTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // Season end time - 7 days from now, fixed and memoized
+  const seasonEndTime = useMemo(() => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), []);
   
   const [seasonStatus, setSeasonStatus] = useState<SeasonStatusType>({
     currentSeason: 1,

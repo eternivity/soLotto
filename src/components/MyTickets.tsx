@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Ticket } from '../types';
 import { solanaService } from '../services/solanaService';
@@ -270,8 +270,8 @@ export const MyTickets: React.FC = () => {
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    </div)
+                  )}
                 </div>
               )}
             </div>
