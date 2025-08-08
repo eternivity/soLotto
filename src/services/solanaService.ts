@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js';
 import { AnchorProvider, Program, Idl } from '@project-serum/anchor';
 import { PROGRAM_ID, NETWORK_CONFIG, COMMISSION_WALLET } from '../constants';
 import idlJson from '../types/idl.json';
@@ -11,6 +11,8 @@ function toNum(value: any): number {
   return Number(value);
 }
 
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
+
 export class SolanaService {
   private connection: Connection;
   private program: Program<Idl>;
@@ -18,7 +20,6 @@ export class SolanaService {
   constructor() {
     this.connection = new Connection(NETWORK_CONFIG.endpoint, NETWORK_CONFIG.commitment);
 
-    // Minimal provider (connection-only). Signing happens via wallet adapter.
     const dummyProvider = {
       connection: this.connection,
       wallet: { publicKey: new PublicKey(COMMISSION_WALLET) },
@@ -41,30 +42,56 @@ export class SolanaService {
     return balance / LAMPORTS_PER_SOL;
   }
 
-  // Real Anchor instruction based on IDL (buyTicket(quantity))
+  private buildMemoIx(seasonId: number, quantity: number, lamports: number): TransactionInstruction {
+    const memo = `solotto:v1;season=${seasonId};qty=${quantity};lamports=${lamports}`;
+    return new TransactionInstruction({ programId: MEMO_PROGRAM_ID, keys: [], data: Buffer.from(memo, 'utf8') });
+  }
+
+  // Buy ticket with Anchor if possible; otherwise fallback to transfer + SPL Memo
   async buyTicket(
     buyerPublicKey: PublicKey,
     quantity: number,
-    _ticketPrice: number,
+    ticketPrice: number,
     treasuryPublicKey: PublicKey
   ): Promise<Transaction> {
     const tx = new Transaction();
+    const seasonId = 1;
+    const totalLamports = Math.floor(ticketPrice * quantity * LAMPORTS_PER_SOL);
 
-    // Build Anchor instruction
-    const ix = await this.program.methods
-      .buyTicket(quantity)
-      .accounts({
-        buyer: buyerPublicKey,
-        treasury: treasuryPublicKey,
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
+    const programId = new PublicKey(PROGRAM_ID);
+    const programInfo = await this.connection.getAccountInfo(programId);
 
-    tx.add(ix);
+    let usedFallback = false;
+    try {
+      if (!programInfo || !programInfo.executable) throw new Error('Program not found on this cluster');
+
+      const ix = await (this.program as any).methods
+        .buyTicket(quantity)
+        .accounts({
+          buyer: buyerPublicKey,
+          treasury: treasuryPublicKey,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+      tx.add(ix);
+    } catch (_) {
+      // Fallback: simple transfer + memo (so everyone can aggregate on-chain)
+      const transferIx = SystemProgram.transfer({ fromPubkey: buyerPublicKey, toPubkey: treasuryPublicKey, lamports: totalLamports });
+      tx.add(transferIx);
+      tx.add(this.buildMemoIx(seasonId, quantity, totalLamports));
+      usedFallback = true;
+    }
 
     const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;
     tx.feePayer = buyerPublicKey;
+
+    if (usedFallback) {
+      console.log('Using fallback: transfer + memo');
+    } else {
+      console.log('Using Anchor program instruction');
+    }
+
     return tx;
   }
 
@@ -84,26 +111,87 @@ export class SolanaService {
     return tx;
   }
 
-  // Try to fetch Season account (PDA seed assumed: ["season", u32_le])
+  private extractMemoFromParsedIx(ix: any): string | null {
+    try {
+      if (ix?.program === 'spl-memo') {
+        if (typeof ix.parsed === 'string') return ix.parsed;
+        if (typeof ix.parsed?.info?.memo === 'string') return ix.parsed.info.memo;
+      }
+    } catch (_) {
+      // ignore
+    }
+    return null;
+  }
+
+  // Try program Season account first; if not available, aggregate via SPL Memo transfers
   async getSeasonData(seasonId: number): Promise<any> {
+    const programId = new PublicKey(PROGRAM_ID);
     try {
       const [seasonPda] = PublicKey.findProgramAddressSync(
         [Buffer.from('season'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
-        new PublicKey(PROGRAM_ID)
+        programId
       );
 
-      // Prefer lowercased account namespace (Anchor JS convention)
+      // Try lower-case then PascalCase
       let account: any | null = null;
       try {
         account = await (this.program.account as any).season.fetch(seasonPda);
       } catch (_) {
-        // Fallback to PascalCase access if needed
         if ((this.program.account as any).Season?.fetch) {
           account = await (this.program.account as any).Season.fetch(seasonPda);
         }
       }
 
-      if (!account) {
+      if (account) {
+        const totalTicketsSold = toNum(account.totalTicketsSold);
+        const totalPrizePoolLamports = toNum(account.totalPrizePool);
+        const endTimeSeconds = toNum(account.endTime);
+        return {
+          seasonId: toNum(account.seasonId),
+          totalTicketsSold,
+          totalPrizePool: totalPrizePoolLamports / LAMPORTS_PER_SOL,
+          isActive: !!account.isActive,
+          endTime: new Date(endTimeSeconds * 1000),
+          winner: account.winner ?? null,
+          winnerTicketId: account.winnerTicketId ?? null,
+          admin: account.admin ?? null,
+        };
+      }
+      // If account missing, fall through to memo aggregation
+      throw new Error('Season account not found');
+    } catch (error) {
+      console.warn('Program Season fetch failed, falling back to memo aggregation:', (error as Error).message);
+      // Memo aggregation fallback (global, works even without program)
+      try {
+        const treasury = new PublicKey(COMMISSION_WALLET);
+        const signatures = await this.connection.getSignaturesForAddress(treasury, { limit: 1000 });
+        const txs = await this.connection.getParsedTransactions(signatures.map(s => s.signature), { maxSupportedTransactionVersion: 0 });
+
+        let ticketsSold = 0;
+        for (const tx of txs) {
+          if (!tx) continue;
+          const outer = tx.transaction.message.instructions as any[];
+          const inner = ((tx.meta?.innerInstructions || []).flatMap((ii: any) => ii.instructions) as any[]) || [];
+          for (const ix of [...outer, ...inner]) {
+            const memo = this.extractMemoFromParsedIx(ix);
+            if (!memo || !memo.startsWith('solotto:')) continue;
+            const parts = memo.split(';');
+            const seasonPart = parts.find(p => p.startsWith('season='));
+            const qtyPart = parts.find(p => p.startsWith('qty='));
+            const seasonVal = seasonPart ? Number(seasonPart.split('=')[1]) : NaN;
+            const qtyVal = qtyPart ? Number(qtyPart.split('=')[1]) : 0;
+            if (seasonVal === seasonId && Number.isFinite(qtyVal)) ticketsSold += qtyVal;
+          }
+        }
+        return {
+          seasonId,
+          totalTicketsSold: ticketsSold,
+          totalPrizePool: ticketsSold * 1.0, // $1 per ticket (gross). UI düşecek
+          isActive: true,
+          endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        };
+      } catch (e) {
+        console.error('Memo aggregation failed:', e);
         return {
           seasonId,
           totalTicketsSold: 0,
@@ -112,31 +200,6 @@ export class SolanaService {
           endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         };
       }
-
-      const totalTicketsSold = toNum(account.totalTicketsSold);
-      const totalPrizePoolLamports = toNum(account.totalPrizePool);
-      const endTimeSeconds = toNum(account.endTime);
-
-      return {
-        seasonId: toNum(account.seasonId),
-        totalTicketsSold,
-        // Prize pool is stored as lamports in IDL. Convert to USD on UI via current price if desired.
-        totalPrizePool: totalPrizePoolLamports / LAMPORTS_PER_SOL,
-        isActive: !!account.isActive,
-        endTime: new Date(endTimeSeconds * 1000),
-        winner: account.winner ?? null,
-        winnerTicketId: account.winnerTicketId ?? null,
-        admin: account.admin ?? null,
-      };
-    } catch (error) {
-      console.error('getSeasonData (on-chain) error:', error);
-      return {
-        seasonId,
-        totalTicketsSold: 0,
-        totalPrizePool: 0,
-        isActive: true,
-        endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      };
     }
   }
 
