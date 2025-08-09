@@ -5,10 +5,12 @@ import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TICKET_PRICE_USD, COMMISSION_PERCENTAGE } from '../constants';
 import { solanaService } from '../services/solanaService';
 import { priceService } from '../services/priceService';
+import { useToast } from './ToastProvider';
 
 export const BuyTicket: React.FC = () => {
   const { publicKey, connected, sendTransaction } = useWallet();
   const { connection } = useConnection();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [ticketNumbers, setTicketNumbers] = useState<string[]>([]);
@@ -50,7 +52,7 @@ export const BuyTicket: React.FC = () => {
 
   const handleBuyTicket = async () => {
     if (!connected || !publicKey) {
-      alert('Please connect your wallet first!');
+      toast.info('Lütfen önce cüzdanınızı bağlayın.');
       return;
     }
 
@@ -69,9 +71,7 @@ export const BuyTicket: React.FC = () => {
         const haveSol = balanceLamports / LAMPORTS_PER_SOL;
         const needSol = (totalLamports + feeBufferLamports) / LAMPORTS_PER_SOL;
         setIsLoading(false);
-        alert(
-          `Cüzdan bakiyesi yetersiz.\n\nGerekli: ~${priceService.formatSOL(needSol)} SOL (bilet + komisyon + ücret)\nMevcut: ${priceService.formatSOL(haveSol)} SOL\n\nLütfen Devnet SOL yükleyin ve tekrar deneyin.`
-        );
+        toast.error(`Cüzdan bakiyesi yetersiz. Gerekli: ~${priceService.formatSOL(needSol)} SOL, Mevcut: ${priceService.formatSOL(haveSol)} SOL. Lütfen Devnet SOL yükleyip tekrar deneyin.`);
         return;
       }
 
@@ -160,7 +160,7 @@ export const BuyTicket: React.FC = () => {
           lower.includes('insufficient lamports') ||
           lower.includes('insufficient balance')
         ) {
-          alert('Cüzdan bakiyesi yetersiz. Lütfen Devnet SOL ekleyip tekrar deneyin.');
+          toast.error('Cüzdan bakiyesi yetersiz. Lütfen Devnet SOL ekleyip tekrar deneyin.');
           setIsLoading(false);
           return;
         }
@@ -173,10 +173,10 @@ export const BuyTicket: React.FC = () => {
           console.error('4. Wallet permissions');
         }
         
-        alert('İşlem başarısız oldu. Lütfen ağ bağlantınızı ve cüzdan yetkilerini kontrol edin, sonra tekrar deneyin.');
+        toast.error('İşlem başarısız oldu. Lütfen ağ bağlantınızı ve cüzdan yetkilerini kontrol edin, sonra tekrar deneyin.');
       } else {
         console.error('Unknown error type:', error);
-        alert('İşlem başarısız oldu (bilinmeyen hata). Lütfen tekrar deneyin.');
+        toast.error('İşlem başarısız oldu (bilinmeyen hata). Lütfen tekrar deneyin.');
       }
     } finally {
       setIsLoading(false);

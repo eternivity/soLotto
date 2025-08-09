@@ -10,11 +10,13 @@ import { CommissionClaim } from './components/CommissionClaim';
 import { WinnerClaim } from './components/WinnerClaim';
 import { Footer } from './components/Footer';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './components/ToastProvider';
 
 function App() {
   return (
     <ErrorBoundary>
       <WalletContextProvider>
+        <ToastProvider>
         <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black text-white">
           {/* Header */}
           <header className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-50">
@@ -114,6 +116,7 @@ function App() {
           {/* Footer */}
           <Footer />
         </div>
+        </ToastProvider>
       </WalletContextProvider>
     </ErrorBoundary>
   );

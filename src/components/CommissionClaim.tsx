@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { COMMISSION_WALLET, COMMISSION_PERCENTAGE } from '../constants';
 import { solanaService } from '../services/solanaService';
+import { useToast } from './ToastProvider';
 
 export const CommissionClaim: React.FC = () => {
   const { publicKey, connected } = useWallet();
+  const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [commissionData, setCommissionData] = useState({
@@ -60,7 +62,7 @@ export const CommissionClaim: React.FC = () => {
 
   const handleClaimCommission = async () => {
     if (!isAdmin || !publicKey) {
-      alert('Only admin wallet can claim commission!');
+      toast.info('Bu işlem sadece admin cüzdanı tarafından yapılabilir.');
       return;
     }
 
@@ -84,7 +86,7 @@ export const CommissionClaim: React.FC = () => {
       
     } catch (error) {
       console.error('Error claiming commission:', error);
-      alert('Failed to claim commission. Please try again.');
+      toast.error('Komisyon çekme işlemi başarısız. Lütfen tekrar deneyin.');
       setIsLoading(false);
     }
   };
