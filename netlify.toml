@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+
+[build.environment]
+  # CRA derlemede uyarıları hataya çevirmesin
+  CI = "false"
+  # Yanlışlıkla ekli Next.js pluginini atla (UI'da kaldırana kadar)
+  NETLIFY_NEXT_PLUGIN_SKIP = "true"
+
+
