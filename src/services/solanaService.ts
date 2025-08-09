@@ -74,7 +74,7 @@ export class SolanaService {
     ticketPrice: number,
   ): Promise<Transaction> {
     const tx = new Transaction();
-    const seasonId = 1;
+    const seasonId = 2; // 🆕 Fresh start - Season 2
     // Brüt bilet bedeli = $1.00 karşılığı SOL
     // Komisyon = brütün %COMMISSION_PERCENTAGE'i (üstten ek alınır)
     // Prize pool'a eklenen: sadece brüt
@@ -387,7 +387,7 @@ export class SolanaService {
                         // Bu user'ın bileti
                         const ticket = {
                           id: `${txInfo.signature}_${Date.now()}`,
-                          seasonId: memoData.seasonId || 1,
+                          seasonId: memoData.seasonId || 2,
                           walletAddress: userPublicKey.toString(),
                           purchaseTime: new Date(tx.blockTime! * 1000),
                           ticketNumber: memoData.ticketNumbers ? memoData.ticketNumbers[0] : `TKT-${Date.now()}`,

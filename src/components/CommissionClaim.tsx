@@ -26,7 +26,7 @@ export const CommissionClaim: React.FC = () => {
       try {
         const solPrice = await priceService.getSolPriceUSD();
         // Get season data to calculate realized commission
-        const seasonData = await solanaService.getSeasonData(1);
+        const seasonData = await solanaService.getSeasonData(2); // 🆕 Season 2
         if (seasonData) {
           const totalTicketsSold = seasonData.totalTicketsSold || 0;
           const totalRevenue = totalTicketsSold * 1.0; // $1 per ticket (gross)

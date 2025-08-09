@@ -9,7 +9,7 @@ export const SeasonStatus: React.FC = () => {
 
   // Season end time - localStorage ile kalıcı ve test modları
   const seasonEndTime = useMemo(() => {
-    const key = 'solotto_season_1_end';
+    const key = 'solotto_season_2_end'; // 🆕 Season 2
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
     
     // Test için: localStorage'da saved bir end time varsa kullan
@@ -30,7 +30,7 @@ export const SeasonStatus: React.FC = () => {
 
   // Test için: season süresini kısaltma fonksiyonu
   const setTestEndTime = (minutes: number) => {
-    const key = 'solotto_season_1_end';
+    const key = 'solotto_season_2_end'; // 🆕 Season 2
     const testEndMs = Date.now() + minutes * 60 * 1000;
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(key, String(testEndMs));
@@ -40,18 +40,32 @@ export const SeasonStatus: React.FC = () => {
     }
   };
 
+  // 🆕 Fresh start: localStorage temizleme fonksiyonu
+  const clearAllData = () => {
+    if (typeof window !== 'undefined') {
+      // Eski season data'larını temizle
+      window.localStorage.removeItem('solotto_season_1_end');
+      window.localStorage.removeItem('solotto_season_2_end');
+      // Tüm ticket data'larını temizle
+      Object.keys(window.localStorage).forEach(key => {
+        if (key.startsWith('solotto_tickets_')) {
+          window.localStorage.removeItem(key);
+        }
+      });
+      console.log('🆕 Fresh start: Tüm localStorage data temizlendi!');
+      window.location.reload();
+    }
+  };
+
   // Console'dan test etmek için window'a fonksiyonu ekle
   if (typeof window !== 'undefined') {
     (window as any).setTestEndTime = setTestEndTime;
-    (window as any).clearSeasonData = () => {
-      localStorage.removeItem('solotto_season_1_end');
-      console.log('Season data cleared, sayfa yenilenecek...');
-      window.location.reload();
-    };
+    (window as any).clearAllData = clearAllData; // 🆕 Fresh start function
+    (window as any).clearSeasonData = clearAllData; // Backward compatibility
   }
 
   const [seasonStatus, setSeasonStatus] = useState<SeasonStatusType>({
-    currentSeason: 1,
+    currentSeason: 2, // 🆕 Season 2
     totalTicketsSold: 0,
     totalPrizePool: 0,
     timeRemaining: {
@@ -74,7 +88,7 @@ export const SeasonStatus: React.FC = () => {
         setSolPriceUSD(solPrice);
 
         // Load season data from blockchain
-        const seasonData = await solanaService.getSeasonData(1);
+        const seasonData = await solanaService.getSeasonData(2); // 🆕 Season 2
         console.log('Loaded season data from blockchain:', seasonData);
 
         if (seasonData) {
@@ -95,7 +109,7 @@ export const SeasonStatus: React.FC = () => {
             
             // Sadece gerçekten farklı bir zaman gelirse ve 1 dakikadan fazla fark varsa güncelle
             if (Number.isFinite(onChainEnd) && Math.abs(onChainEnd - currentStoredTime) > 60000) {
-              const key = 'solotto_season_1_end';
+              const key = 'solotto_season_2_end'; // 🆕 Season 2
               if (typeof window !== 'undefined') {
                 window.localStorage.setItem(key, String(onChainEnd));
                 console.log('On-chain end time significantly updated:', new Date(onChainEnd));
