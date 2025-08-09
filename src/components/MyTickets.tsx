@@ -31,15 +31,23 @@ export const MyTickets: React.FC = () => {
             const storageKey = getStorageKey(publicKey.toString());
             const storedTickets = localStorage.getItem(storageKey);
             
+            console.log('Checking localStorage with key:', storageKey);
+            console.log('Raw localStorage data:', storedTickets);
+            
             if (storedTickets) {
-              const parsedTickets = JSON.parse(storedTickets).map((ticket: any) => ({
-                ...ticket,
-                purchaseTime: new Date(ticket.purchaseTime)
-              }));
-              console.log('Found tickets in local storage:', parsedTickets.length);
-              setUserTickets(parsedTickets);
+              try {
+                const parsedTickets = JSON.parse(storedTickets).map((ticket: any) => ({
+                  ...ticket,
+                  purchaseTime: new Date(ticket.purchaseTime)
+                }));
+                console.log('Parsed tickets from localStorage:', parsedTickets.length, parsedTickets);
+                setUserTickets(parsedTickets);
+              } catch (parseError) {
+                console.error('Error parsing tickets from localStorage:', parseError);
+                setUserTickets([]);
+              }
             } else {
-              console.log('No tickets found for this wallet');
+              console.log('No tickets found in localStorage for wallet:', publicKey.toString());
               setUserTickets([]);
             }
           }

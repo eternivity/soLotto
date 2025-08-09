@@ -42,8 +42,26 @@ export class SolanaService {
     return balance / LAMPORTS_PER_SOL;
   }
 
-  private buildMemoIx(seasonId: number, quantity: number, lamports: number): TransactionInstruction {
-    const memo = `solotto:v1;season=${seasonId};qty=${quantity};lamports=${lamports}`;
+  private buildMemoIx(seasonId: number, quantity: number, lamports: number, buyerPublicKey?: PublicKey): TransactionInstruction {
+    // JSON format memo for getUserTickets compatibility
+    const ticketNumbers: string[] = [];
+    const startTicketNumber = Date.now();
+    
+    for (let i = 0; i < quantity; i++) {
+      ticketNumbers.push(`TKT-${(startTicketNumber + i).toString().padStart(6, '0')}`);
+    }
+    
+    const memoData = {
+      type: 'TICKET_PURCHASE',
+      seasonId,
+      quantity,
+      lamports,
+      buyer: buyerPublicKey?.toString(),
+      ticketNumbers,
+      timestamp: new Date().toISOString(),
+    };
+    
+    const memo = JSON.stringify(memoData);
     return new TransactionInstruction({ programId: MEMO_PROGRAM_ID, keys: [], data: Buffer.from(memo, 'utf8') });
   }
 
@@ -102,7 +120,7 @@ export class SolanaService {
         tx.add(transferCommission);
       }
       // Memo sadece bilet bilgisi için (brüt tutarı yazılır)
-      tx.add(this.buildMemoIx(seasonId, quantity, grossLamports));
+      tx.add(this.buildMemoIx(seasonId, quantity, grossLamports, buyerPublicKey));
       usedFallback = true;
     }
 
@@ -299,8 +317,67 @@ export class SolanaService {
     }
   }
 
-  async getUserTickets(_userPublicKey: PublicKey): Promise<any[]> {
-    return [];
+  async getUserTickets(userPublicKey: PublicKey): Promise<any[]> {
+    try {
+      console.log('Fetching user tickets from blockchain for:', userPublicKey.toString());
+      
+      // User'ın tüm transaction'larını getir
+      const transactions = await this.connection.getSignaturesForAddress(userPublicKey, {
+        limit: 100, // Son 100 transaction
+      });
+      
+      const userTickets: any[] = [];
+      
+      for (const txInfo of transactions) {
+        try {
+          const tx = await this.connection.getTransaction(txInfo.signature, {
+            maxSupportedTransactionVersion: 0,
+          });
+          
+          if (!tx || !tx.meta) continue;
+          
+          // SPL Memo instruction'ları ara
+          for (const instruction of tx.transaction.message.instructions) {
+            if (instruction.programId.equals(this.memoProgram)) {
+              const data = instruction.data;
+              const memoText = Buffer.from(data).toString('utf8');
+              
+              // Bilet satın alma memo'sunu parse et
+              if (memoText.includes('TICKET_PURCHASE')) {
+                try {
+                  const memoData = JSON.parse(memoText);
+                  if (memoData.buyer === userPublicKey.toString()) {
+                    // Bu user'ın bileti
+                    const ticket = {
+                      id: `${txInfo.signature}_${Date.now()}`,
+                      seasonId: memoData.seasonId || 1,
+                      walletAddress: userPublicKey.toString(),
+                      purchaseTime: new Date(tx.blockTime! * 1000),
+                      ticketNumber: memoData.ticketNumbers ? memoData.ticketNumbers[0] : `TKT-${Date.now()}`,
+                      quantity: memoData.quantity || 1,
+                      txSignature: txInfo.signature,
+                    };
+                    userTickets.push(ticket);
+                  }
+                } catch (parseError) {
+                  // JSON parse hatası - skip
+                  continue;
+                }
+              }
+            }
+          }
+        } catch (txError) {
+          // Transaction fetch hatası - skip
+          continue;
+        }
+      }
+      
+      console.log('Found user tickets on blockchain:', userTickets.length);
+      return userTickets;
+    } catch (error) {
+      console.error('Error fetching user tickets from blockchain:', error);
+      return [];
+    }
   }
 
   async getWinnersHistory(): Promise<any[]> {
