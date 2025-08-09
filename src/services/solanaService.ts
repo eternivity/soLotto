@@ -349,14 +349,15 @@ export class SolanaService {
                 
                 if ('programId' in instruction) {
                   // Legacy instruction
-                  programId = instruction.programId;
-                  data = instruction.data;
+                  programId = instruction.programId as PublicKey;
+                  data = instruction.data as Uint8Array;
                 } else {
                   // Compiled instruction (versioned)
                   const accountKeys = message.staticAccountKeys || [];
-                  if (instruction.programIdIndex < accountKeys.length) {
-                    programId = accountKeys[instruction.programIdIndex];
-                    data = instruction.data;
+                  const compiledInstruction = instruction as any;
+                  if (compiledInstruction.programIdIndex < accountKeys.length) {
+                    programId = accountKeys[compiledInstruction.programIdIndex];
+                    data = compiledInstruction.data as Uint8Array;
                   } else {
                     continue;
                   }
