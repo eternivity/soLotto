@@ -293,8 +293,15 @@ export class SolanaService {
                 console.log('🔍 SeasonData: Memo season:', memoData.s, 'vs target:', seasonId);
                 if (memoData.s === seasonId) {
                   // Calculate from transfer amount - check whole transaction
-                  const transferToTreasury = this.extractSolTransferLamportsTo(allIxs, TREASURY_WALLET);
-                  console.log('🔍 SeasonData: Transfer to treasury:', transferToTreasury, 'lamports');
+                  let transferToTreasury = 0;
+                  for (const txIx of allIxs) {
+                    const ixTransfer = this.extractSolTransferLamportsTo(txIx, TREASURY_WALLET);
+                    if (ixTransfer > 0) {
+                      console.log('🔍 SeasonData: Found transfer in instruction:', ixTransfer, 'lamports to', TREASURY_WALLET);
+                    }
+                    transferToTreasury += ixTransfer;
+                  }
+                  console.log('🔍 SeasonData: Total transfer to treasury:', transferToTreasury, 'lamports');
                   if (transferToTreasury > 0) {
                     txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
                     console.log('📊 SeasonData: Found TIX purchase:', txTickets, 'tickets, transfer:', transferToTreasury / LAMPORTS_PER_SOL, 'SOL');
@@ -339,7 +346,10 @@ export class SolanaService {
           
           // If no memo found, try amount-based detection for Season 2 legacy transfers
           if (txTickets === 0 && seasonId === 2) {
-            const transferToTreasury = this.extractSolTransferLamportsTo(allIxs, TREASURY_WALLET);
+            let transferToTreasury = 0;
+            for (const txIx of allIxs) {
+              transferToTreasury += this.extractSolTransferLamportsTo(txIx, TREASURY_WALLET);
+            }
             if (transferToTreasury > 0.5 * LAMPORTS_PER_SOL) {
               txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
               console.log('📊 SeasonData: Found Season 2 transfer:', txTickets, 'tickets (amount-based)');
