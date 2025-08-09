@@ -74,10 +74,13 @@ export const CommissionClaim: React.FC = () => {
     
     try {
       // On-chain claim
-      const sig = await sendTransaction(
-        await solanaService.claimCommission(publicKey, 1),
-        connection
-      );
+      const tx = await solanaService.claimCommission(publicKey, 1);
+      if (!tx) {
+        toast.info('Claim edilecek komisyon bakiyesi bulunamadı veya program bu ağda aktif değil.');
+        setIsLoading(false);
+        return;
+      }
+      const sig = await sendTransaction(tx, connection);
       await connection.confirmTransaction(sig, 'confirmed');
       setIsLoading(false);
       setShowSuccess(true);

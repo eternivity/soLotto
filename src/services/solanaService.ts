@@ -119,7 +119,7 @@ export class SolanaService {
     return tx;
   }
 
-  async claimCommission(adminPublicKey: PublicKey, seasonId: number): Promise<Transaction> {
+  async claimCommission(adminPublicKey: PublicKey, seasonId: number): Promise<Transaction | null> {
     const tx = new Transaction();
     const programId = new PublicKey(PROGRAM_ID);
     const [seasonPda] = PublicKey.findProgramAddressSync(
@@ -132,6 +132,18 @@ export class SolanaService {
     );
 
     try {
+      // Program gerçekten mevcut ve executable mı?
+      const programInfo = await this.connection.getAccountInfo(programId);
+      if (!programInfo || !programInfo.executable) {
+        throw new Error('Program not found or not executable on this cluster');
+      }
+
+      // Commission kasasında bakiye var mı?
+      const commissionBalanceLamports = await this.connection.getBalance(commissionPda);
+      if (!commissionBalanceLamports || commissionBalanceLamports <= 0) {
+        throw new Error('No commission balance available to claim');
+      }
+
       const ix = await (this.program as any).methods
         .claimCommission(seasonId)
         .accounts({
@@ -143,7 +155,8 @@ export class SolanaService {
         .instruction();
       tx.add(ix);
     } catch (e) {
-      console.error('claimCommission build failed:', e);
+      console.error('claimCommission build failed or not claimable:', e);
+      return null; // Boş işlem göndermeyelim
     }
 
     const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
