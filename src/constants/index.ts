@@ -21,7 +21,7 @@ export const SEASON_CONFIG = {
 };
 
 export const NETWORK_CONFIG = {
-  endpoint: "https://testnet.helius-rpc.com/?api-key=dfe48aac-27c8-4671-9b41-1a8f19b85b0b",
+  endpoint: "https://rpc.testnet.solana.com",
   commitment: "confirmed" as const,
 };
 
