@@ -109,6 +109,9 @@ export class SolanaService {
         })
         .instruction();
       tx.add(ix);
+      
+      // ✅ Anchor program başarılı olduğunda da memo ekle!
+      tx.add(this.buildMemoIx(seasonId, quantity, grossLamports, buyerPublicKey));
     } catch (_) {
       // Fallback: iki ayrı transfer + memo
       // 1) Brüt bilet bedeli prize pool (treasury)'ye
