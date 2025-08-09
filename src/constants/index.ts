@@ -1,5 +1,5 @@
-// Your deployed program ID from Solana Playground
-export const PROGRAM_ID = "8Nt53vsc4ZFtnWdMLLWtmjsaBXmBttzuFnouNCNbuXYj"; // Deployed on Solana Playground
+// Your deployed program ID from Solana Playground (Testnet)
+export const PROGRAM_ID = "9Lu5557CPM7DtBadKFkh9kd48KpyHku4kTi4xnmJWhYe";
 
 // Ticket pricing in USD (SOL will be calculated dynamically)
 export const TICKET_PRICE_USD = 1.0; // USD
