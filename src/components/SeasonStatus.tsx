@@ -91,13 +91,16 @@ export const SeasonStatus: React.FC = () => {
           // Eğer on-chain bir endTime geldiyse ve farklıysa güncelle
           if (seasonData.endTime) {
             const onChainEnd = new Date(seasonData.endTime).getTime();
-            if (Number.isFinite(onChainEnd) && onChainEnd !== seasonEndTime.getTime()) {
+            const currentStoredTime = seasonEndTime.getTime();
+            
+            // Sadece gerçekten farklı bir zaman gelirse ve 1 dakikadan fazla fark varsa güncelle
+            if (Number.isFinite(onChainEnd) && Math.abs(onChainEnd - currentStoredTime) > 60000) {
               const key = 'solotto_season_1_end';
               if (typeof window !== 'undefined') {
                 window.localStorage.setItem(key, String(onChainEnd));
-                console.log('On-chain end time updated, sayfa yenilenecek...');
-                // useMemo yeni değeri yüklemesi için sayfa yenile
-                window.location.reload();
+                console.log('On-chain end time significantly updated:', new Date(onChainEnd));
+                // Sadece gerçekten önemli farklar için sayfa yenile
+                setTimeout(() => window.location.reload(), 1000);
               }
             }
           }

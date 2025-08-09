@@ -22,8 +22,20 @@ export class PriceService {
     }
 
     try {
-      console.log('Fetching real SOL price from CoinGecko...');
-      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+      console.log('Fetching real SOL price via Netlify function...');
+      
+      // Production'da Netlify function kullan, development'da direkt API
+      const isProduction = window.location.hostname.includes('netlify.app');
+      const apiUrl = isProduction 
+        ? '/.netlify/functions/sol-price'
+        : 'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd';
+      
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+      
       const data = await response.json();
       
       this.solPriceUSD = data.solana.usd;
@@ -33,7 +45,11 @@ export class PriceService {
       return this.solPriceUSD;
     } catch (error) {
       console.error('Error fetching SOL price:', error);
-      // Fallback değer
+      // Fallback değer - cache varsa onu kullan
+      if (this.solPriceUSD > 0) {
+        console.log('Using cached SOL price:', this.solPriceUSD);
+        return this.solPriceUSD;
+      }
       return 100; // Varsayılan değer
     }
   }
