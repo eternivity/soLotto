@@ -32,10 +32,12 @@ export const CommissionClaim: React.FC = () => {
         const seasonData = await solanaService.getSeasonData(1);
         
         if (seasonData) {
-          const totalRevenue = seasonData.totalPrizePool || 0;
+          // Commission is charged on top, but we calculate accrued commission from ticket count (USD basis)
+          const totalTicketsSold = seasonData.totalTicketsSold || 0;
+          const totalRevenue = totalTicketsSold * 1.0; // $1 per ticket (gross)
           const totalCommission = totalRevenue * (COMMISSION_PERCENTAGE / 100);
-          const pendingCommission = totalCommission * 0.6; // Simulate 60% pending
-          const claimedCommission = totalCommission * 0.4; // Simulate 40% claimed
+          const pendingCommission = totalCommission; // Until on-chain claim wired, show all as pending
+          const claimedCommission = 0; // Not tracked yet
           
           setCommissionData({
             totalRevenue,

@@ -208,6 +208,7 @@ export class SolanaService {
           totalPrizePool: ticketsSold * 1.0, // $1 per ticket (gross)
           isActive: true,
           endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          // Commission computed off-chain in UI from ticketsSold until program integration is complete
         };
       } catch (e) {
         console.error('Memo aggregation failed:', e);
