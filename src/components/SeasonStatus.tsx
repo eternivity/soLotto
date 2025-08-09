@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { SeasonStatus as SeasonStatusType } from '../types';
 import { SEASON_CONFIG, COMMISSION_PERCENTAGE } from '../constants';
 import { priceService } from '../services/priceService';
@@ -7,15 +7,48 @@ import { solanaService } from '../services/solanaService';
 export const SeasonStatus: React.FC = () => {
   const [solPriceUSD, setSolPriceUSD] = useState(100);
 
-  // Season end time - localStorage ile kalıcı
-  const [seasonEndTime, setSeasonEndTime] = useState<Date>(() => {
+  // Season end time - localStorage ile kalıcı ve test modları
+  const seasonEndTime = useMemo(() => {
     const key = 'solotto_season_1_end';
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
-    if (saved) return new Date(Number(saved));
+    
+    // Test için: localStorage'da saved bir end time varsa kullan
+    if (saved) {
+      const savedDate = new Date(Number(saved));
+      console.log('Loaded saved season end time:', savedDate);
+      return savedDate;
+    }
+    
+    // İlk kez açılıyor - yeni season başlat
     const endMs = Date.now() + SEASON_CONFIG.DURATION_DAYS * 24 * 60 * 60 * 1000;
-    if (typeof window !== 'undefined') window.localStorage.setItem(key, String(endMs));
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(key, String(endMs));
+      console.log('Created new season end time:', new Date(endMs));
+    }
     return new Date(endMs);
-  });
+  }, []); // Dependency array boş - sadece mount'ta çalışır
+
+  // Test için: season süresini kısaltma fonksiyonu
+  const setTestEndTime = (minutes: number) => {
+    const key = 'solotto_season_1_end';
+    const testEndMs = Date.now() + minutes * 60 * 1000;
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(key, String(testEndMs));
+      console.log(`Test: Season ${minutes} dakika sonra bitecek:`, new Date(testEndMs));
+      // Sayfayı yenile ki yeni end time yüklenmesi için
+      window.location.reload();
+    }
+  };
+
+  // Console'dan test etmek için window'a fonksiyonu ekle
+  if (typeof window !== 'undefined') {
+    (window as any).setTestEndTime = setTestEndTime;
+    (window as any).clearSeasonData = () => {
+      localStorage.removeItem('solotto_season_1_end');
+      console.log('Season data cleared, sayfa yenilenecek...');
+      window.location.reload();
+    };
+  }
 
   const [seasonStatus, setSeasonStatus] = useState<SeasonStatusType>({
     currentSeason: 1,
