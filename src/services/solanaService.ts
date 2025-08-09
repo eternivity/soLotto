@@ -1,6 +1,6 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL, TransactionInstruction } from '@solana/web3.js';
 import { AnchorProvider, Program, Idl } from '@project-serum/anchor';
-import { PROGRAM_ID, NETWORK_CONFIG, COMMISSION_WALLET, TREASURY_WALLET, TICKET_PRICE_USD } from '../constants';
+import { PROGRAM_ID, NETWORK_CONFIG, COMMISSION_WALLET, TREASURY_WALLET, COMMISSION_PERCENTAGE } from '../constants';
 import idlJson from '../types/idl.json';
 
 function toNum(value: any): number {
@@ -55,18 +55,12 @@ export class SolanaService {
   ): Promise<Transaction> {
     const tx = new Transaction();
     const seasonId = 1;
-    // Brüt bilet bedeli = $1.00
-    // Komisyon = brütün %10'u
-    // Tahsilat: brüt + komisyon (kullanıcıdan çekilen toplam)
+    // Brüt bilet bedeli = $1.00 karşılığı SOL
+    // Komisyon = brütün %COMMISSION_PERCENTAGE'i (üstten ek alınır)
     // Prize pool'a eklenen: sadece brüt
-    const commissionRate = 0.01 * (typeof (COMMISSION_WALLET) === 'string' ? 10 : 10); // fallback
-    const grossPerTicketSol = ticketPrice; // $1 karşılığı SOL
-    const commissionPerTicketSol = grossPerTicketSol * (commissionRate * 10); // düzeltilecek aşağıda
-    // Not: Komisyon yüzdesini constants'tan okuyacağız, doğru hesap aşağıda yeniden yapılır
-
-    const commissionPercent = 10; // temporary; UI'deki COMMISSION_PERCENTAGE ile uyumlu
+    const grossPerTicketSol = ticketPrice;
     const grossLamports = Math.floor(grossPerTicketSol * quantity * LAMPORTS_PER_SOL);
-    const commissionLamports = Math.floor((grossPerTicketSol * (commissionPercent / 100)) * quantity * LAMPORTS_PER_SOL);
+    const commissionLamports = Math.floor((grossPerTicketSol * (COMMISSION_PERCENTAGE / 100)) * quantity * LAMPORTS_PER_SOL);
     const totalLamports = grossLamports + commissionLamports; // kullanıcıdan tahsil edilecek toplam
 
     const programId = new PublicKey(PROGRAM_ID);
@@ -101,8 +95,8 @@ export class SolanaService {
         const transferCommission = SystemProgram.transfer({ fromPubkey: buyerPublicKey, toPubkey: commissionPk, lamports: commissionLamports });
         tx.add(transferCommission);
       }
-      // Memo sadece bilet bilgisi için (brütü yansıtıyoruz)
-      tx.add(this.buildMemoIx(seasonId, quantity, totalLamports));
+      // Memo sadece bilet bilgisi için (brüt tutarı yazılır)
+      tx.add(this.buildMemoIx(seasonId, quantity, grossLamports));
       usedFallback = true;
     }
 

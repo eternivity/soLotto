@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useConnection } from '@solana/wallet-adapter-react';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TICKET_PRICE_USD, COMMISSION_PERCENTAGE, COMMISSION_WALLET } from '../constants';
 import { solanaService } from '../services/solanaService';
 import { priceService } from '../services/priceService';
@@ -57,6 +57,24 @@ export const BuyTicket: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Ön kontrol: bakiye yeterli mi?
+      const balanceLamports = await connection.getBalance(publicKey);
+      const grossPerTicketSol = ticketPriceSOL;
+      const grossLamports = Math.floor(grossPerTicketSol * quantity * LAMPORTS_PER_SOL);
+      const commissionLamports = Math.floor((grossPerTicketSol * (COMMISSION_PERCENTAGE / 100)) * quantity * LAMPORTS_PER_SOL);
+      const totalLamports = grossLamports + commissionLamports;
+      const feeBufferLamports = 5000; // yaklaşık tx ücreti için küçük pay
+
+      if (balanceLamports < totalLamports + feeBufferLamports) {
+        const haveSol = balanceLamports / LAMPORTS_PER_SOL;
+        const needSol = (totalLamports + feeBufferLamports) / LAMPORTS_PER_SOL;
+        setIsLoading(false);
+        alert(
+          `Cüzdan bakiyesi yetersiz.\n\nGerekli: ~${priceService.formatSOL(needSol)} SOL (bilet + komisyon + ücret)\nMevcut: ${priceService.formatSOL(haveSol)} SOL\n\nLütfen Devnet SOL yükleyin ve tekrar deneyin.`
+        );
+        return;
+      }
+
       console.log('Creating real blockchain transaction...');
       
       // Create transaction (service içinde prize pool + komisyon ayrıştırılır)
@@ -136,6 +154,17 @@ export const BuyTicket: React.FC = () => {
         console.error('Error stack:', error.stack);
         
         // Check for specific wallet errors
+        const lower = error.message.toLowerCase();
+        if (
+          lower.includes('insufficient funds') ||
+          lower.includes('insufficient lamports') ||
+          lower.includes('insufficient balance')
+        ) {
+          alert('Cüzdan bakiyesi yetersiz. Lütfen Devnet SOL ekleyip tekrar deneyin.');
+          setIsLoading(false);
+          return;
+        }
+
         if (error.message.includes('WalletSendTransactionError')) {
           console.error('Wallet transaction failed - this usually means:');
           console.error('1. Program ID mismatch');
@@ -144,18 +173,22 @@ export const BuyTicket: React.FC = () => {
           console.error('4. Wallet permissions');
         }
         
-        alert(`Failed to buy ticket: ${error.message}`);
+        alert('İşlem başarısız oldu. Lütfen ağ bağlantınızı ve cüzdan yetkilerini kontrol edin, sonra tekrar deneyin.');
       } else {
         console.error('Unknown error type:', error);
-        alert('Failed to buy ticket: Unknown error occurred');
+        alert('İşlem başarısız oldu (bilinmeyen hata). Lütfen tekrar deneyin.');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-        const totalPrice = quantity * TICKET_PRICE_USD;
-      const totalPriceSOL = quantity * ticketPriceSOL;
+      const totalPrice = quantity * TICKET_PRICE_USD; // brüt USD
+      const commissionUSD = totalPrice * (COMMISSION_PERCENTAGE / 100);
+      const grandTotalUSD = totalPrice + commissionUSD;
+      const grossSOL = quantity * ticketPriceSOL;
+      const commissionSOL = grossSOL * (COMMISSION_PERCENTAGE / 100);
+      const grandTotalSOL = grossSOL + commissionSOL;
 
   return (
     <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl p-8 border border-gray-700 shadow-2xl">
@@ -221,12 +254,9 @@ export const BuyTicket: React.FC = () => {
                         {/* Total Price */}
               <div className="text-center pt-4 border-t border-gray-600">
                 <div className="text-lg text-gray-400 mb-1">Total Price</div>
-                <div className="text-2xl font-bold text-solana-green mb-1">
-                  ${totalPrice.toFixed(2)}
-                </div>
-                <div className="text-sm text-gray-500">
-                  ≈ {priceService.formatSOL(totalPriceSOL)} SOL
-                </div>
+                <div className="text-sm text-gray-400">Subtotal: ${totalPrice.toFixed(2)} | Fee ({COMMISSION_PERCENTAGE}%): ${commissionUSD.toFixed(2)}</div>
+                <div className="text-2xl font-bold text-solana-green mb-1">${grandTotalUSD.toFixed(2)}</div>
+                <div className="text-sm text-gray-500">≈ {priceService.formatSOL(grandTotalSOL)} SOL</div>
               </div>
         </div>
 
