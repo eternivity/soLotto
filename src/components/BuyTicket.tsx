@@ -244,11 +244,93 @@ export const BuyTicket: React.FC = () => {
                 {quantity}
               </span>
               <button
-                onClick={() => setQuantity(quantity + 1)}
+                onClick={() => setQuantity(Math.min(1000, quantity + 1))}
                 className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold"
               >
                 +
               </button>
+            </div>
+            
+            {/* Quick Add Buttons */}
+            <div className="mt-4">
+              <div className="text-xs text-gray-500 text-center mb-2">Quick Add</div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <button
+                  onClick={() => setQuantity(Math.min(1000, quantity + 5))}
+                  className="py-2 px-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  +5
+                </button>
+                <button
+                  onClick={() => setQuantity(Math.min(1000, quantity + 10))}
+                  className="py-2 px-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  +10
+                </button>
+                <button
+                  onClick={() => setQuantity(Math.min(1000, quantity + 25))}
+                  className="py-2 px-3 bg-blue-600 hover:bg-blue-500 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  +25
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <button
+                  onClick={() => setQuantity(Math.min(1000, quantity + 50))}
+                  className="py-2 px-3 bg-purple-600 hover:bg-purple-500 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  +50
+                </button>
+                <button
+                  onClick={() => setQuantity(Math.min(1000, quantity + 100))}
+                  className="py-2 px-3 bg-purple-600 hover:bg-purple-500 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  +100
+                </button>
+                <button
+                  onClick={() => setQuantity(1)}
+                  className="py-2 px-3 bg-red-600 hover:bg-red-500 rounded-lg text-white text-sm font-medium transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
+              
+              {/* Popular Amounts */}
+              <div className="border-t border-gray-600 pt-3 mt-3">
+                <div className="text-xs text-gray-500 text-center mb-2">Popular Amounts</div>
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    onClick={() => setQuantity(10)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    10
+                  </button>
+                  <button
+                    onClick={() => setQuantity(50)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    50
+                  </button>
+                  <button
+                    onClick={() => setQuantity(100)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    100
+                  </button>
+                  <button
+                    onClick={() => setQuantity(500)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    500
+                  </button>
+                </div>
+              </div>
+              
+              {quantity >= 900 && (
+                <div className="text-xs text-yellow-400 text-center mt-2">
+                  Maximum 1000 tickets per purchase
+                </div>
+              )}
             </div>
           </div>
           
