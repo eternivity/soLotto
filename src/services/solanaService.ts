@@ -321,12 +321,14 @@ export class SolanaService {
 
   async getUserTickets(userPublicKey: PublicKey): Promise<any[]> {
     try {
-      console.log('Fetching user tickets from blockchain for:', userPublicKey.toString());
+      console.log('🔍 Fetching user tickets from blockchain for:', userPublicKey.toString());
       
       // User'ın tüm transaction'larını getir
       const transactions = await this.connection.getSignaturesForAddress(userPublicKey, {
         limit: 100, // Son 100 transaction
       });
+      
+      console.log('📋 Found', transactions.length, 'transactions for user');
       
       const userTickets: any[] = [];
       
@@ -367,11 +369,17 @@ export class SolanaService {
                 
                 if (programId.equals(this.memoProgram)) {
                   const memoText = Buffer.from(data).toString('utf8');
+                  console.log('📝 Found memo:', memoText);
                   
                   // Bilet satın alma memo'sunu parse et
                   if (memoText.includes('TICKET_PURCHASE')) {
+                    console.log('🎫 Found TICKET_PURCHASE memo:', memoText);
                     try {
                       const memoData = JSON.parse(memoText);
+                      console.log('📊 Parsed memo data:', memoData);
+                      console.log('👤 Memo buyer:', memoData.buyer);
+                      console.log('👤 Current user:', userPublicKey.toString());
+                      
                       if (memoData.buyer === userPublicKey.toString()) {
                         // Bu user'ın bileti
                         const ticket = {
@@ -383,10 +391,13 @@ export class SolanaService {
                           quantity: memoData.quantity || 1,
                           txSignature: txInfo.signature,
                         };
+                        console.log('✅ Adding ticket for user:', ticket);
                         userTickets.push(ticket);
+                      } else {
+                        console.log('❌ Memo buyer mismatch - skipping');
                       }
                     } catch (parseError) {
-                      // JSON parse hatası - skip
+                      console.error('❌ JSON parse error for memo:', memoText, parseError);
                       continue;
                     }
                   }

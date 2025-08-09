@@ -85,17 +85,32 @@ export const MyTickets: React.FC = () => {
     if (connected && publicKey) {
       setIsLoading(true);
       try {
-        const storageKey = getStorageKey(publicKey.toString());
-        const storedTickets = localStorage.getItem(storageKey);
+        console.log('🔄 Refreshing tickets from blockchain for:', publicKey.toString());
         
-        if (storedTickets) {
-          const parsedTickets = JSON.parse(storedTickets).map((ticket: any) => ({
-            ...ticket,
-            purchaseTime: new Date(ticket.purchaseTime)
-          }));
-          setUserTickets(parsedTickets);
+        // Try to get tickets from blockchain first (same logic as initial load)
+        const blockchainTickets = await solanaService.getUserTickets(publicKey);
+        
+        if (blockchainTickets && blockchainTickets.length > 0) {
+          console.log('✅ Found tickets on blockchain during refresh:', blockchainTickets.length);
+          setUserTickets(blockchainTickets);
         } else {
-          setUserTickets([]);
+          // Fallback to local storage
+          const storageKey = getStorageKey(publicKey.toString());
+          const storedTickets = localStorage.getItem(storageKey);
+          
+          console.log('⚠️ No blockchain tickets, checking localStorage:', storageKey);
+          
+          if (storedTickets) {
+            const parsedTickets = JSON.parse(storedTickets).map((ticket: any) => ({
+              ...ticket,
+              purchaseTime: new Date(ticket.purchaseTime)
+            }));
+            console.log('📦 Using localStorage tickets:', parsedTickets.length);
+            setUserTickets(parsedTickets);
+          } else {
+            console.log('❌ No tickets found anywhere');
+            setUserTickets([]);
+          }
         }
       } catch (error) {
         console.error('Error refreshing tickets:', error);
