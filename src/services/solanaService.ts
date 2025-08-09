@@ -286,18 +286,28 @@ export class SolanaService {
             
             // Format 3: {"t":"TIX","s":2} - amount-based (NEW)
             if (memo.includes('TIX')) {
+              console.log('🔍 SeasonData: Found TIX memo:', memo);
               try {
                 const memoData = JSON.parse(memo);
+                console.log('🔍 SeasonData: Parsed TIX data:', memoData);
+                console.log('🔍 SeasonData: Memo season:', memoData.s, 'vs target:', seasonId);
                 if (memoData.s === seasonId) {
                   // Calculate from transfer amount - check whole transaction
                   const transferToTreasury = this.extractSolTransferLamportsTo(allIxs, TREASURY_WALLET);
+                  console.log('🔍 SeasonData: Transfer to treasury:', transferToTreasury, 'lamports');
                   if (transferToTreasury > 0) {
                     txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
                     console.log('📊 SeasonData: Found TIX purchase:', txTickets, 'tickets, transfer:', transferToTreasury / LAMPORTS_PER_SOL, 'SOL');
                     break; // One memo per transaction
+                  } else {
+                    console.log('⚠️ SeasonData: No transfer found to treasury in this transaction');
                   }
+                } else {
+                  console.log('⚠️ SeasonData: Season mismatch, skipping');
                 }
-              } catch (e) { /* ignore */ }
+              } catch (e) { 
+                console.error('❌ SeasonData: TIX memo parse error:', e);
+              }
             }
             
             // Format 2: {"type":"TICKET_PURCHASE",...} - JSON quantity

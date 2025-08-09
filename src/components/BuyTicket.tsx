@@ -102,6 +102,10 @@ export const BuyTicket: React.FC = () => {
       console.log('Transaction confirmed:', confirmation);
       toast.success(`Purchase successful! ${quantity} ticket${quantity > 1 ? 's' : ''} confirmed.`);
       
+      // 🔄 Wait for blockchain propagation before triggering updates
+      console.log('⏳ Waiting 3 seconds for blockchain propagation...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
                 // Generate ticket numbers
           const newTicketNumbers = generateTicketNumbers(quantity, currentTicketCount + 1);
           setTicketNumbers(newTicketNumbers);
