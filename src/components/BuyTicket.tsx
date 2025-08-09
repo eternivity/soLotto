@@ -229,79 +229,85 @@ export const BuyTicket: React.FC = () => {
               </div>
             </div>
 
-        {/* Quantity Selector */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
-          <div className="text-center mb-4">
-            <label className="text-gray-400 text-sm mb-2 block">Number of Tickets</label>
-            <div className="flex items-center justify-center space-x-4">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold"
-              >
-                -
-              </button>
-              <span className="text-2xl font-bold text-white min-w-[3rem] text-center">
-                {quantity}
-              </span>
-              <button
-                onClick={() => setQuantity(Math.min(1000, quantity + 1))}
-                className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold"
-              >
-                +
-              </button>
-            </div>
-            
-            {/* Set Amount Buttons */}
-            <div className="mt-4">
-              <div className="grid grid-cols-5 gap-2">
+        {/* Quantity Selector - Sadece wallet bağlıyken göster */}
+        {connected && (
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+            <div className="text-center mb-4">
+              <label className="text-gray-400 text-sm mb-2 block">Number of Tickets</label>
+              <div className="flex items-center justify-center space-x-4">
                 <button
-                  onClick={() => setQuantity(10)}
-                  className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold"
                 >
-                  10
+                  -
                 </button>
+                <span className="text-2xl font-bold text-white min-w-[3rem] text-center">
+                  {quantity}
+                </span>
                 <button
-                  onClick={() => setQuantity(50)}
-                  className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  onClick={() => setQuantity(Math.min(1000, quantity + 1))}
+                  className="w-10 h-10 bg-gray-700 hover:bg-gray-600 rounded-lg flex items-center justify-center text-white font-bold"
                 >
-                  50
-                </button>
-                <button
-                  onClick={() => setQuantity(100)}
-                  className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
-                >
-                  100
-                </button>
-                <button
-                  onClick={() => setQuantity(500)}
-                  className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
-                >
-                  500
-                </button>
-                <button
-                  onClick={() => setQuantity(1)}
-                  className="py-2 px-2 bg-red-600 hover:bg-red-500 rounded-lg text-white text-xs font-medium transition-colors"
-                >
-                  Reset
+                  +
                 </button>
               </div>
               
-              {quantity >= 900 && (
-                <div className="text-xs text-yellow-400 text-center mt-2">
-                  Maximum 1000 tickets per purchase
+              {/* Set Amount Buttons */}
+              <div className="mt-4">
+                <div className="grid grid-cols-5 gap-2">
+                  <button
+                    onClick={() => setQuantity(10)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    10
+                  </button>
+                  <button
+                    onClick={() => setQuantity(50)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    50
+                  </button>
+                  <button
+                    onClick={() => setQuantity(100)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    100
+                  </button>
+                  <button
+                    onClick={() => setQuantity(500)}
+                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    500
+                  </button>
+                  <button
+                    onClick={() => setQuantity(1)}
+                    className="py-2 px-2 bg-red-600 hover:bg-red-500 rounded-lg text-white text-xs font-medium transition-colors"
+                  >
+                    Reset
+                  </button>
                 </div>
-              )}
+                
+                {quantity >= 900 && (
+                  <div className="text-xs text-yellow-400 text-center mt-2">
+                    Maximum 1000 tickets per purchase
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+        )}
           
-                        {/* Total Price */}
-              <div className="text-center pt-4 border-t border-gray-600">
-                <div className="text-lg text-gray-400 mb-1">Total Price</div>
-                <div className="text-sm text-gray-400">Subtotal: ${totalPrice.toFixed(2)} | Fee ({COMMISSION_PERCENTAGE}%): ${commissionUSD.toFixed(2)}</div>
-                <div className="text-2xl font-bold text-solana-green mb-1">${grandTotalUSD.toFixed(2)}</div>
-                <div className="text-sm text-gray-500">≈ {priceService.formatSOL(grandTotalSOL)} SOL</div>
-              </div>
-        </div>
+        {/* Total Price - Sadece wallet bağlıyken göster */}
+        {connected && (
+          <div className="bg-gray-800 rounded-lg p-6 border border-gray-700 mb-6">
+            <div className="text-center pt-4 border-t border-gray-600">
+              <div className="text-lg text-gray-400 mb-1">Total Price</div>
+              <div className="text-sm text-gray-400">Subtotal: ${totalPrice.toFixed(2)} | Fee ({COMMISSION_PERCENTAGE}%): ${commissionUSD.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-solana-green mb-1">${grandTotalUSD.toFixed(2)}</div>
+              <div className="text-sm text-gray-500">≈ {priceService.formatSOL(grandTotalSOL)} SOL</div>
+            </div>
+          </div>
+        )}
 
         {/* Wallet Connection Status */}
         {connected && publicKey && (
@@ -310,6 +316,21 @@ export const BuyTicket: React.FC = () => {
               <div className="text-green-400 text-sm mb-2">Connected Wallet</div>
               <div className="text-white font-mono text-sm">
                 {publicKey?.toString().slice(0, 4)}...{publicKey?.toString().slice(-4)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Wallet Connection Prompt - Wallet bağlı değilken göster */}
+        {!connected && (
+          <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 mb-6">
+            <div className="text-center">
+              <div className="text-blue-400 text-lg font-semibold mb-2">Connect Your Wallet</div>
+              <div className="text-gray-400 text-sm mb-4">
+                To buy tickets and participate in the lottery, please connect your Solana wallet first.
+              </div>
+              <div className="text-xs text-gray-500">
+                Use the "Select Wallet" button in the top right corner
               </div>
             </div>
           </div>
