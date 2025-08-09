@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useConnection } from '@solana/wallet-adapter-react';
-import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { TICKET_PRICE_USD, COMMISSION_PERCENTAGE, COMMISSION_WALLET } from '../constants';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { TICKET_PRICE_USD, COMMISSION_PERCENTAGE } from '../constants';
 import { solanaService } from '../services/solanaService';
 import { priceService } from '../services/priceService';
 

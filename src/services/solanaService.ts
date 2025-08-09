@@ -61,7 +61,6 @@ export class SolanaService {
     const grossPerTicketSol = ticketPrice;
     const grossLamports = Math.floor(grossPerTicketSol * quantity * LAMPORTS_PER_SOL);
     const commissionLamports = Math.floor((grossPerTicketSol * (COMMISSION_PERCENTAGE / 100)) * quantity * LAMPORTS_PER_SOL);
-    const totalLamports = grossLamports + commissionLamports; // kullanıcıdan tahsil edilecek toplam
 
     const programId = new PublicKey(PROGRAM_ID);
     const programInfo = await this.connection.getAccountInfo(programId);
