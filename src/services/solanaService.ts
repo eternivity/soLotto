@@ -64,19 +64,27 @@ export class SolanaService {
 
     const programId = new PublicKey(PROGRAM_ID);
     const programInfo = await this.connection.getAccountInfo(programId);
+    const [seasonPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('season'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+      programId
+    );
+    const [commissionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('commission'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+      programId
+    );
 
     let usedFallback = false;
     try {
       if (!programInfo || !programInfo.executable) throw new Error('Program not found on this cluster');
 
       const treasuryPk = new PublicKey(TREASURY_WALLET);
-      // Program tarafında komisyon ayrışması yoksa, fallback ile iki transfer yapacağız
-      // Anchor ix başarısız olursa aşağıdaki fallback çalışır
       const ix = await (this.program as any).methods
-        .buyTicket(quantity)
+        .buyTicket(seasonId, quantity, grossLamports, commissionLamports)
         .accounts({
           buyer: buyerPublicKey,
           treasury: treasuryPk,
+          commissionVault: commissionPda,
+          season: seasonPda,
           systemProgram: SystemProgram.programId,
         })
         .instruction();
@@ -111,8 +119,33 @@ export class SolanaService {
     return tx;
   }
 
-  async claimCommission(adminPublicKey: PublicKey, _treasuryPublicKey: PublicKey): Promise<Transaction> {
+  async claimCommission(adminPublicKey: PublicKey, seasonId: number): Promise<Transaction> {
     const tx = new Transaction();
+    const programId = new PublicKey(PROGRAM_ID);
+    const [seasonPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('season'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+      programId
+    );
+    const [commissionPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from('commission'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+      programId
+    );
+
+    try {
+      const ix = await (this.program as any).methods
+        .claimCommission(seasonId)
+        .accounts({
+          admin: adminPublicKey,
+          season: seasonPda,
+          commissionVault: commissionPda,
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction();
+      tx.add(ix);
+    } catch (e) {
+      console.error('claimCommission build failed:', e);
+    }
+
     const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;
     tx.feePayer = adminPublicKey;

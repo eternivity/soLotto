@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_lang::system_program;
 
 declare_id!("SoLoTto1111111111111111111111111111111111111");
 
@@ -22,21 +23,70 @@ pub mod solotto_program {
         ctx: Context<BuyTicket>,
         season_id: u32,
         quantity: u32,
-        amount_lamports: u64,
+        gross_lamports: u64,
+        commission_lamports: u64,
     ) -> Result<()> {
         let season = &mut ctx.accounts.season;
         require!(season.is_active, SolottoError::SeasonNotActive);
         require!(season.season_id == season_id, SolottoError::InvalidSeason);
         require!(quantity > 0, SolottoError::InvalidQuantity);
-        // Basit doğrulama: gelen miktarı topla (transfer aynı tx içinde yapılmalı)
+        // Bilet sayısı ve brüt gelir birikimi
         season.total_tickets_sold = season
             .total_tickets_sold
             .checked_add(quantity)
             .ok_or(SolottoError::Overflow)?;
         season.total_revenue_lamports = season
             .total_revenue_lamports
-            .checked_add(amount_lamports)
+            .checked_add(gross_lamports)
             .ok_or(SolottoError::Overflow)?;
+
+        // Ödemeleri böl: brüt -> treasury, komisyon -> commission_vault
+        if gross_lamports > 0 {
+            let cpi_ctx = CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.buyer.to_account_info(),
+                    to: ctx.accounts.treasury.to_account_info(),
+                },
+            );
+            system_program::transfer(cpi_ctx, gross_lamports)?;
+        }
+
+        if commission_lamports > 0 {
+            let cpi_ctx = CpiContext::new(
+                ctx.accounts.system_program.to_account_info(),
+                system_program::Transfer {
+                    from: ctx.accounts.buyer.to_account_info(),
+                    to: ctx.accounts.commission_vault.to_account_info(),
+                },
+            );
+            system_program::transfer(cpi_ctx, commission_lamports)?;
+        }
+        Ok(())
+    }
+
+    pub fn claim_commission(ctx: Context<ClaimCommission>, season_id: u32) -> Result<()> {
+        // Sadece admin çekebilir
+        require!(ctx.accounts.season.admin == ctx.accounts.admin.key(), SolottoError::Unauthorized);
+
+        // Komisyon kasasındaki kullanılabilir bakiye (rent minimumu hariç) tamamen aktarılır
+        let rent_min = Rent::get()?.minimum_balance(8 + CommissionVault::LEN);
+        let current = **ctx.accounts.commission_vault.to_account_info().lamports.borrow();
+        require!(current > rent_min, SolottoError::NothingToClaim);
+        let amount = current.saturating_sub(rent_min);
+
+        let bump = ctx.accounts.commission_vault.bump;
+        let seeds: &[&[u8]] = &[b"commission", &season_id.to_le_bytes(), &[bump]];
+        let cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.commission_vault.to_account_info(),
+                to: ctx.accounts.admin.to_account_info(),
+            },
+            &[seeds],
+        );
+        system_program::transfer(cpi_ctx, amount)?;
+
         Ok(())
     }
 }
@@ -60,6 +110,15 @@ pub struct StartSeason<'info> {
     )]
     pub season: Account<'info, Season>,
 
+    #[account(
+        init,
+        payer = admin,
+        space = 8 + CommissionVault::LEN,
+        seeds = [b"commission", &season_id.to_le_bytes()],
+        bump
+    )]
+    pub commission_vault: Account<'info, CommissionVault>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -74,10 +133,40 @@ pub struct BuyTicket<'info> {
 
     #[account(
         mut,
+        seeds = [b"commission", &season_id.to_le_bytes()],
+        bump = commission_vault.bump
+    )]
+    pub commission_vault: Account<'info, CommissionVault>,
+
+    #[account(
+        mut,
         seeds = [b"season", &season_id.to_le_bytes()],
         bump = season.bump
     )]
     pub season: Account<'info, Season>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+#[instruction(season_id: u32)]
+pub struct ClaimCommission<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"season", &season_id.to_le_bytes()],
+        bump = season.bump
+    )]
+    pub season: Account<'info, Season>,
+
+    #[account(
+        mut,
+        seeds = [b"commission", &season_id.to_le_bytes()],
+        bump = commission_vault.bump
+    )]
+    pub commission_vault: Account<'info, CommissionVault>,
 
     pub system_program: Program<'info, System>,
 }
@@ -103,6 +192,15 @@ impl Season {
         + 1;                  // bump
 }
 
+#[account]
+pub struct CommissionVault {
+    pub bump: u8,
+}
+
+impl CommissionVault {
+    pub const LEN: usize = 1; // bump
+}
+
 #[error_code]
 pub enum SolottoError {
     #[msg("Season is not active")] 
@@ -113,4 +211,8 @@ pub enum SolottoError {
     InvalidQuantity,
     #[msg("Overflow")] 
     Overflow,
+    #[msg("Unauthorized")]
+    Unauthorized,
+    #[msg("Nothing to claim")]
+    NothingToClaim,
 }
