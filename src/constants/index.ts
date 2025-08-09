@@ -20,12 +20,12 @@ export const SEASON_CONFIG = {
 };
 
 export const NETWORK_CONFIG = {
-  endpoint: "https://api.devnet.solana.com",
+  endpoint: "https://api.testnet.solana.com",
   commitment: "confirmed" as const,
 };
 
-// Explorer URL devnet için cluster parametresiyle
-export const EXPLORER_URL = "https://explorer.solana.com/address/?cluster=devnet";
+// Explorer URL testnet için cluster parametresiyle
+export const EXPLORER_URL = "https://explorer.solana.com/address/?cluster=testnet";
 export const GITHUB_URL = "https://github.com/your-username/solotto";
 
 // Social Media Links

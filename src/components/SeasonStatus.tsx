@@ -172,7 +172,7 @@ export const SeasonStatus: React.FC = () => {
               ≈ {priceService.formatSOL(netPrizePoolSOL)} SOL
             </div>
             <div className="text-sm text-gray-500 mt-1">
-              After {COMMISSION_PERCENTAGE}% platform fee
+              Commission charged on top: {COMMISSION_PERCENTAGE}% (not deducted from prize pool)
             </div>
           </div>
         </div>

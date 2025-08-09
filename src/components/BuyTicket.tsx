@@ -52,7 +52,7 @@ export const BuyTicket: React.FC = () => {
 
   const handleBuyTicket = async () => {
     if (!connected || !publicKey) {
-      toast.info('Lütfen önce cüzdanınızı bağlayın.');
+      toast.info('Please connect your wallet first.');
       return;
     }
 
@@ -71,7 +71,7 @@ export const BuyTicket: React.FC = () => {
         const haveSol = balanceLamports / LAMPORTS_PER_SOL;
         const needSol = (totalLamports + feeBufferLamports) / LAMPORTS_PER_SOL;
         setIsLoading(false);
-        toast.error(`Cüzdan bakiyesi yetersiz. Gerekli: ~${priceService.formatSOL(needSol)} SOL, Mevcut: ${priceService.formatSOL(haveSol)} SOL. Lütfen Devnet SOL yükleyip tekrar deneyin.`);
+        toast.error(`Insufficient balance. Required: ~${priceService.formatSOL(needSol)} SOL, Available: ${priceService.formatSOL(haveSol)} SOL. Please fund your wallet and try again.`);
         return;
       }
 
@@ -98,7 +98,7 @@ export const BuyTicket: React.FC = () => {
       // Wait for confirmation
       const confirmation = await connection.confirmTransaction(signature, 'confirmed');
       console.log('Transaction confirmed:', confirmation);
-      toast.success(`Satın alma başarılı! ${quantity} bilet onaylandı.`);
+      toast.success(`Purchase successful! ${quantity} ticket${quantity > 1 ? 's' : ''} confirmed.`);
       
                 // Generate ticket numbers
           const newTicketNumbers = generateTicketNumbers(quantity, currentTicketCount + 1);
@@ -161,7 +161,7 @@ export const BuyTicket: React.FC = () => {
           lower.includes('insufficient lamports') ||
           lower.includes('insufficient balance')
         ) {
-          toast.error('Cüzdan bakiyesi yetersiz. Lütfen Devnet SOL ekleyip tekrar deneyin.');
+          toast.error('Insufficient balance. Please fund your wallet and try again.');
           setIsLoading(false);
           return;
         }
@@ -174,10 +174,10 @@ export const BuyTicket: React.FC = () => {
           console.error('4. Wallet permissions');
         }
         
-        toast.error('İşlem başarısız oldu. Lütfen ağ bağlantınızı ve cüzdan yetkilerini kontrol edin, sonra tekrar deneyin.');
+        toast.error('Transaction failed. Please check your network and wallet permissions, then try again.');
       } else {
         console.error('Unknown error type:', error);
-        toast.error('İşlem başarısız oldu (bilinmeyen hata). Lütfen tekrar deneyin.');
+        toast.error('Transaction failed (unknown error). Please try again.');
       }
     } finally {
       setIsLoading(false);

@@ -62,7 +62,7 @@ export const CommissionClaim: React.FC = () => {
 
   const handleClaimCommission = async () => {
     if (!isAdmin || !publicKey) {
-      toast.info('Bu işlem sadece admin cüzdanı tarafından yapılabilir.');
+      toast.info('This action can only be performed by the admin wallet.');
       return;
     }
 
@@ -86,7 +86,7 @@ export const CommissionClaim: React.FC = () => {
       
     } catch (error) {
       console.error('Error claiming commission:', error);
-      toast.error('Komisyon çekme işlemi başarısız. Lütfen tekrar deneyin.');
+      toast.error('Failed to claim commission. Please try again.');
       setIsLoading(false);
     }
   };
