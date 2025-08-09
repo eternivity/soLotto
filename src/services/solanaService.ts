@@ -97,6 +97,12 @@ export class SolanaService {
     try {
       if (!programInfo || !programInfo.executable) throw new Error('Program not found on this cluster');
 
+      // 🔍 Season PDA'sının var olup olmadığını kontrol et
+      const seasonAccountInfo = await this.connection.getAccountInfo(seasonPda);
+      if (!seasonAccountInfo) {
+        throw new Error('Season PDA not initialized - using fallback');
+      }
+
       const treasuryPk = new PublicKey(TREASURY_WALLET);
       const ix = await (this.program as any).methods
         .buyTicket(seasonId, quantity, grossLamports, commissionLamports)
@@ -112,7 +118,8 @@ export class SolanaService {
       
       // ✅ Anchor program başarılı olduğunda da memo ekle!
       tx.add(this.buildMemoIx(seasonId, quantity, grossLamports, buyerPublicKey));
-    } catch (_) {
+    } catch (error) {
+      console.log('Anchor instruction failed, using fallback:', error);
       // Fallback: iki ayrı transfer + memo
       // 1) Brüt bilet bedeli prize pool (treasury)'ye
       const treasuryPk = new PublicKey(TREASURY_WALLET);
