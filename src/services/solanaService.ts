@@ -70,7 +70,6 @@ export class SolanaService {
       if (!programInfo || !programInfo.executable) throw new Error('Program not found on this cluster');
 
       const treasuryPk = new PublicKey(TREASURY_WALLET);
-      const commissionPk = new PublicKey(COMMISSION_WALLET);
       // Program tarafında komisyon ayrışması yoksa, fallback ile iki transfer yapacağız
       // Anchor ix başarısız olursa aşağıdaki fallback çalışır
       const ix = await (this.program as any).methods
