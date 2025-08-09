@@ -6,7 +6,7 @@ import { solanaService } from '../services/solanaService';
 import { useToast } from './ToastProvider';
 
 export const CommissionClaim: React.FC = () => {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, sendTransaction } = useWallet();
   const { connection } = useConnection();
   const toast = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -74,12 +74,14 @@ export const CommissionClaim: React.FC = () => {
     
     try {
       // On-chain claim
-      const tx = await solanaService.claimCommission(publicKey, 1);
-      // CommissionClaim bileşeninde sendTransaction yok, bu panel admin için olduğundan WalletConnect üstünden kullanılır.
-      // Burada sadece bilgiyi gösteriyoruz; gerçek gönderim BuyTicket benzeri bir akışla Wallet bağlandığında yapılabilir.
-      // Geçici olarak işlemi simüle etmeye devam edelim:
+      const sig = await sendTransaction(
+        await solanaService.claimCommission(publicKey, 1),
+        connection
+      );
+      await connection.confirmTransaction(sig, 'confirmed');
       setIsLoading(false);
       setShowSuccess(true);
+      toast.success('Commission claimed successfully on Testnet.');
       setTimeout(() => setShowSuccess(false), 5000);
       
     } catch (error) {
