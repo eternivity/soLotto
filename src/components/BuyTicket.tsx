@@ -295,37 +295,6 @@ export const BuyTicket: React.FC = () => {
                 </button>
               </div>
               
-              {/* Popular Amounts */}
-              <div className="border-t border-gray-600 pt-3 mt-3">
-                <div className="text-xs text-gray-500 text-center mb-2">Popular Amounts</div>
-                <div className="grid grid-cols-4 gap-2">
-                  <button
-                    onClick={() => setQuantity(10)}
-                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
-                  >
-                    10
-                  </button>
-                  <button
-                    onClick={() => setQuantity(50)}
-                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
-                  >
-                    50
-                  </button>
-                  <button
-                    onClick={() => setQuantity(100)}
-                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
-                  >
-                    100
-                  </button>
-                  <button
-                    onClick={() => setQuantity(500)}
-                    className="py-2 px-2 bg-green-600 hover:bg-green-500 rounded-lg text-white text-xs font-medium transition-colors"
-                  >
-                    500
-                  </button>
-                </div>
-              </div>
-              
               {quantity >= 900 && (
                 <div className="text-xs text-yellow-400 text-center mt-2">
                   Maximum 1000 tickets per purchase
