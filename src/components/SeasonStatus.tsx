@@ -94,8 +94,11 @@ export const SeasonStatus: React.FC = () => {
         setSolPriceUSD(solPrice);
 
         // Load season data from blockchain
+        console.log('🔄 Loading Season 2 data from blockchain...');
         const seasonData = await solanaService.getSeasonData(2); // 🆕 Season 2
-        console.log('Loaded season data from blockchain:', seasonData);
+        console.log('📊 Loaded season data from blockchain:', seasonData);
+        console.log('📊 Total tickets sold:', seasonData?.totalTicketsSold);
+        console.log('📊 Total prize pool:', seasonData?.totalPrizePool);
 
         if (seasonData) {
           setSeasonStatus(prev => ({
@@ -132,8 +135,8 @@ export const SeasonStatus: React.FC = () => {
 
     loadData();
 
-    // Refresh data every 30 seconds to show live updates
-    const interval = setInterval(loadData, 30000);
+    // Refresh data every 10 seconds to show live updates (faster for testing)
+    const interval = setInterval(loadData, 10000);
 
     // Listen for ticket updates
     const handleTicketsUpdated = () => {

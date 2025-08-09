@@ -257,7 +257,10 @@ export class SolanaService {
       // If account missing, fall through to memo aggregation
       throw new Error('Season account not found');
     } catch (error) {
-      console.warn('Program Season fetch failed, falling back to memo aggregation:', (error as Error).message);
+      console.warn('📍 Program Season fetch failed, falling back to memo aggregation:', (error as Error).message);
+      console.log('📍 Starting memo aggregation for Season', seasonId);
+      console.log('📍 Treasury wallet:', TREASURY_WALLET);
+      console.log('📍 Commission wallet:', COMMISSION_WALLET);
       // Memo aggregation fallback (global, works even without program)
       try {
         const treasury = new PublicKey(TREASURY_WALLET);
@@ -286,11 +289,11 @@ export class SolanaService {
               try {
                 const memoData = JSON.parse(memo);
                 if (memoData.s === seasonId) {
-                  // Calculate from transfer amount
-                  const transferToTreasury = this.extractSolTransferLamportsTo([ix], TREASURY_WALLET);
+                  // Calculate from transfer amount - check whole transaction
+                  const transferToTreasury = this.extractSolTransferLamportsTo(allIxs, TREASURY_WALLET);
                   if (transferToTreasury > 0) {
                     txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
-                    console.log('📊 SeasonData: Found TIX purchase:', txTickets, 'tickets');
+                    console.log('📊 SeasonData: Found TIX purchase:', txTickets, 'tickets, transfer:', transferToTreasury / LAMPORTS_PER_SOL, 'SOL');
                     break; // One memo per transaction
                   }
                 }
@@ -349,6 +352,12 @@ export class SolanaService {
             }
           }
         }
+        console.log('📊 Memo aggregation results:');
+        console.log('📊 Season ID:', seasonId);
+        console.log('📊 Tickets sold:', ticketsSold);
+        console.log('📊 Prize pool ($):', ticketsSold * 1.0);
+        console.log('📊 Commission lamports:', commissionLamportsReceived);
+        
         return {
           seasonId,
           totalTicketsSold: ticketsSold,
