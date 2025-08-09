@@ -197,7 +197,6 @@ export class SolanaService {
             const parts = memo.split(';');
             const seasonPart = parts.find(p => p.startsWith('season='));
             const qtyPart = parts.find(p => p.startsWith('qty='));
-            const lamportsPart = parts.find(p => p.startsWith('lamports='));
             const seasonVal = seasonPart ? Number(seasonPart.split('=')[1]) : NaN;
             const qtyVal = qtyPart ? Number(qtyPart.split('=')[1]) : 0;
             if (seasonVal === seasonId && Number.isFinite(qtyVal)) ticketsSold += qtyVal;
