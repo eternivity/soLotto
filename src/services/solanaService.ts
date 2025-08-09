@@ -185,6 +185,19 @@ export class SolanaService {
     return null;
   }
 
+  private extractSolTransferLamportsTo(ix: any, destinationBase58: string): number {
+    try {
+      if (ix?.program === 'system' && ix?.parsed?.type === 'transfer') {
+        const dest = ix.parsed?.info?.destination;
+        const lamports = Number(ix.parsed?.info?.lamports ?? 0);
+        if (dest === destinationBase58) return lamports;
+      }
+    } catch (_) {
+      // ignore
+    }
+    return 0;
+  }
+
   // Try program Season account first; if not available, aggregate via SPL Memo transfers
   async getSeasonData(seasonId: number): Promise<any> {
     const programId = new PublicKey(PROGRAM_ID);
@@ -233,11 +246,13 @@ export class SolanaService {
         const txs = await this.connection.getParsedTransactions(uniqueSigs, { maxSupportedTransactionVersion: 0 });
 
         let ticketsSold = 0;
+        let commissionLamportsReceived = 0;
         for (const tx of txs) {
           if (!tx) continue;
           const outer = tx.transaction.message.instructions as any[];
           const inner = ((tx.meta?.innerInstructions || []).flatMap((ii: any) => ii.instructions) as any[]) || [];
-          for (const ix of [...outer, ...inner]) {
+          const allIxs = [...outer, ...inner];
+          for (const ix of allIxs) {
             const memo = this.extractMemoFromParsedIx(ix);
             if (!memo || !memo.startsWith('solotto:')) continue;
             const parts = memo.split(';');
@@ -247,6 +262,20 @@ export class SolanaService {
             const qtyVal = qtyPart ? Number(qtyPart.split('=')[1]) : 0;
             if (seasonVal === seasonId && Number.isFinite(qtyVal)) ticketsSold += qtyVal;
           }
+          // If this tx has our season memo, sum transfers to admin wallet as realized commission
+          const containsOurMemo = allIxs.some(ix => {
+            const m = this.extractMemoFromParsedIx(ix);
+            if (!m || !m.startsWith('solotto:')) return false;
+            const parts = m.split(';');
+            const seasonPart = parts.find(p => p.startsWith('season='));
+            const seasonVal = seasonPart ? Number(seasonPart.split('=')[1]) : NaN;
+            return seasonVal === seasonId;
+          });
+          if (containsOurMemo) {
+            for (const ix of allIxs) {
+              commissionLamportsReceived += this.extractSolTransferLamportsTo(ix, COMMISSION_WALLET);
+            }
+          }
         }
         return {
           seasonId,
@@ -254,7 +283,7 @@ export class SolanaService {
           totalPrizePool: ticketsSold * 1.0, // $1 per ticket (gross)
           isActive: true,
           endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          // Commission computed off-chain in UI from ticketsSold until program integration is complete
+          commissionLamportsReceived,
         };
       } catch (e) {
         console.error('Memo aggregation failed:', e);
@@ -264,6 +293,7 @@ export class SolanaService {
           totalPrizePool: 0,
           isActive: true,
           endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          commissionLamportsReceived: 0,
         };
       }
     }

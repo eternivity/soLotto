@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useConnection } from '@solana/wallet-adapter-react';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { COMMISSION_WALLET, COMMISSION_PERCENTAGE } from '../constants';
 import { solanaService } from '../services/solanaService';
-import { useToast } from './ToastProvider';
+import { priceService } from '../services/priceService';
 
 export const CommissionClaim: React.FC = () => {
-  const { publicKey, connected, sendTransaction } = useWallet();
-  const { connection } = useConnection();
-  const toast = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const { publicKey, connected } = useWallet();
   const [commissionData, setCommissionData] = useState({
     totalRevenue: 0,
-    totalCommission: 0,
+    totalCommission: 0, // USD cinsinden gerçekleşen komisyon
+    totalCommissionSOL: 0, // SOL cinsinden gerçekleşen komisyon
     pendingCommission: 0,
     claimedCommission: 0,
     lastClaimDate: new Date(),
@@ -26,34 +23,25 @@ export const CommissionClaim: React.FC = () => {
   useEffect(() => {
     const loadCommissionData = async () => {
       if (!isAdmin) return;
-      
       try {
-        console.log('Loading commission data from blockchain...');
-        
-        // Get season data to calculate commission
+        const solPrice = await priceService.getSolPriceUSD();
+        // Get season data to calculate realized commission
         const seasonData = await solanaService.getSeasonData(1);
-        
         if (seasonData) {
-          // Commission is charged on top, but we calculate accrued commission from ticket count (USD basis)
           const totalTicketsSold = seasonData.totalTicketsSold || 0;
           const totalRevenue = totalTicketsSold * 1.0; // $1 per ticket (gross)
-          const totalCommission = totalRevenue * (COMMISSION_PERCENTAGE / 100);
-          const pendingCommission = totalCommission; // Until on-chain claim wired, show all as pending
-          const claimedCommission = 0; // Not tracked yet
-          
+
+          const realizedLamports = Number(seasonData.commissionLamportsReceived || 0);
+          const realizedSOL = realizedLamports / LAMPORTS_PER_SOL;
+          const realizedUSD = realizedSOL * solPrice;
+
           setCommissionData({
             totalRevenue,
-            totalCommission,
-            pendingCommission,
-            claimedCommission,
+            totalCommission: realizedUSD,
+            totalCommissionSOL: realizedSOL,
+            pendingCommission: 0,
+            claimedCommission: realizedUSD,
             lastClaimDate: new Date(),
-          });
-          
-          console.log('Commission data loaded:', {
-            totalRevenue,
-            totalCommission,
-            pendingCommission,
-            claimedCommission,
           });
         }
       } catch (error) {
@@ -63,36 +51,6 @@ export const CommissionClaim: React.FC = () => {
 
     loadCommissionData();
   }, [isAdmin]);
-
-  const handleClaimCommission = async () => {
-    if (!isAdmin || !publicKey) {
-      toast.info('This action can only be performed by the admin wallet.');
-      return;
-    }
-
-    setIsLoading(true);
-    
-    try {
-      // On-chain claim
-      const tx = await solanaService.claimCommission(publicKey, 1);
-      if (!tx) {
-        toast.info('Claim edilecek komisyon bakiyesi bulunamadı veya program bu ağda aktif değil.');
-        setIsLoading(false);
-        return;
-      }
-      const sig = await sendTransaction(tx, connection);
-      await connection.confirmTransaction(sig, 'confirmed');
-      setIsLoading(false);
-      setShowSuccess(true);
-      toast.success('Commission claimed successfully on Testnet.');
-      setTimeout(() => setShowSuccess(false), 5000);
-      
-    } catch (error) {
-      console.error('Error claiming commission:', error);
-      toast.error('Failed to claim commission. Please try again.');
-      setIsLoading(false);
-    }
-  };
 
   // Don't render if not admin
   if (!isAdmin) {
@@ -128,42 +86,41 @@ export const CommissionClaim: React.FC = () => {
           </div>
         </div>
 
-        {/* Total Commission */}
+        {/* Gerçekleşen Komisyon (USD) */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-400 mb-2">
+            <div className="text-3xl font-bold text-green-400 mb-1">
               ${commissionData.totalCommission.toFixed(2)}
             </div>
-            <div className="text-gray-400">Total Commission</div>
+            <div className="text-gray-400">Toplam Kazanç</div>
             <div className="text-sm text-gray-500 mt-1">
-              {COMMISSION_PERCENTAGE}% of revenue
+              ≈ {commissionData.totalCommissionSOL.toFixed(4)} SOL
+            </div>
+            <div className="text-xs text-green-300 mt-1">
+              {COMMISSION_PERCENTAGE}% komisyon
             </div>
           </div>
         </div>
 
-        {/* Pending Commission */}
+        {/* Pending Commission (Instant modda yok) */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <div className="text-center">
             <div className="text-3xl font-bold text-yellow-400 mb-2">
-              ${commissionData.pendingCommission.toFixed(2)}
+              $0.00
             </div>
             <div className="text-gray-400">Pending Commission</div>
-            <div className="text-sm text-gray-500 mt-1">
-              Available to claim
-            </div>
+            <div className="text-sm text-gray-500 mt-1">Instant mode</div>
           </div>
         </div>
 
-        {/* Claimed Commission */}
+        {/* Cüzdandaki Gerçek Bakiye */}
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <div className="text-center">
-            <div className="text-3xl font-bold text-green-400 mb-2">
+            <div className="text-3xl font-bold text-blue-400 mb-2">
               ${commissionData.claimedCommission.toFixed(2)}
             </div>
-            <div className="text-gray-400">Claimed Commission</div>
-            <div className="text-sm text-gray-500 mt-1">
-              Already withdrawn
-            </div>
+            <div className="text-gray-400">Cüzdana Gelen</div>
+            <div className="text-sm text-gray-500 mt-1">Instant transfer</div>
           </div>
         </div>
       </div>
@@ -185,62 +142,45 @@ export const CommissionClaim: React.FC = () => {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Last Claim:</span>
+                <span className="text-gray-400">Last Update:</span>
                 <span className="text-white">
                   {commissionData.lastClaimDate.toLocaleDateString()}
                 </span>
               </div>
             </div>
           </div>
-          
           <div>
-            <h3 className="text-lg font-semibold text-green-400 mb-4">Quick Actions</h3>
+            <h3 className="text-lg font-semibold text-green-400 mb-4">Instant Mode</h3>
             <div className="space-y-3">
-              <button
-                onClick={handleClaimCommission}
-                disabled={isLoading || commissionData.pendingCommission <= 0}
-                className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-200 ${
-                  isLoading || commissionData.pendingCommission <= 0
-                    ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-solana-purple to-solana-green hover:from-purple-600 hover:to-green-500 transform hover:scale-105'
-                }`}
-              >
-                {isLoading ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  `Claim $${commissionData.pendingCommission.toFixed(2)}`
-                )}
-              </button>
-              
-              <div className="text-center">
-                <p className="text-gray-400 text-sm">
-                  Available to claim: ${commissionData.pendingCommission.toFixed(2)}
-                </p>
+              <div className="p-4 rounded-lg bg-green-900/20 border border-green-500/30 text-green-300">
+                Komisyonlar bilet alım anında otomatik olarak admin cüzdanına gönderilir. Claim işlemi gerekmemektedir.
+              </div>
+              <div className="text-center text-gray-400 text-sm">
+                Gerçekleşen komisyonlar zincir işlemlerinden (SPL Memo + SystemProgram transfer) toplanarak hesaplanır.
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Success Message */}
-      {showSuccess && (
-        <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-6">
-          <div className="text-center">
-            <div className="flex items-center justify-center text-green-400 mb-4">
-              <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="font-medium text-lg">Commission claimed successfully!</span>
-            </div>
-            <div className="text-gray-400 text-sm">
-              ${commissionData.pendingCommission.toFixed(2)} has been sent to your wallet.
-            </div>
+      {/* Instant Mode Bilgi */}
+      <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-6 mb-6">
+        <div className="text-center">
+          <div className="flex items-center justify-center text-blue-400 mb-4">
+            <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M13 3a1 1 0 100 2h.293l-6.647 6.646a1 1 0 101.414 1.414L14.707 6.707V7a1 1 0 102 0V3.5a1.5 1.5 0 00-1.5-1.5H13z" clipRule="evenodd"/>
+              <path fillRule="evenodd" d="M2.5 3A1.5 1.5 0 001 4.5v12A1.5 1.5 0 002.5 18h12a1.5 1.5 0 001.5-1.5V10a1 1 0 10-2 0v6.5h-12V4.5h6a1 1 0 100-2h-6z" clipRule="evenodd"/>
+            </svg>
+            <span className="font-medium text-lg">Instant Settlement Mode Aktif</span>
+          </div>
+          <div className="text-gray-300 text-sm mb-2">
+            Komisyonlar bilet satın alma anında otomatik olarak admin cüzdanına gönderilmektedir.
+          </div>
+          <div className="text-blue-400 text-xs">
+            Claim işlemi gereksizdir - her satışta anlık hesap görmektedir.
           </div>
         </div>
-      )}
+      </div>
 
       {/* Admin Info */}
       <div className="mt-6 text-center">
@@ -248,7 +188,7 @@ export const CommissionClaim: React.FC = () => {
           This dashboard is only visible to the admin wallet.
         </p>
         <p className="text-gray-500 text-xs mt-2">
-          Commission is automatically calculated and can be claimed at any time.
+          Instant mode aktiftir: Komisyonlar otomatik olarak tahsil edilir.
         </p>
       </div>
     </div>

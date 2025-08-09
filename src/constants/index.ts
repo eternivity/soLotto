@@ -7,15 +7,16 @@ export const TICKET_PRICE_USD = 1.0; // USD
 // Commission settings
 export const COMMISSION_PERCENTAGE = 10; // 10%
 export const COMMISSION_WALLET = "43kyNFpG5sje54EZYWQvRXuQjerCYvfWv715mPucnypo"; // Admin wallet address
-// Prize havuzu (kasa) adresi. Ayrı bir adres sağlayana kadar admin adresi ile aynı tutulur.
-export const TREASURY_WALLET = COMMISSION_WALLET;
+
+// Prize havuzu (kasa) adresi - test için farklı bir adres
+export const TREASURY_WALLET = "5x2cxjYcEv6qNP8XGJAXdX8rM5G8tgNp3PNDjJP3Kx7F"; // Separate treasury wallet
 
 export const SEASON_CONFIG = {
   DURATION_DAYS: 7, // Season duration in days
   TICKET_PRICE_USD: 1.0,
   COMMISSION_PERCENTAGE: 10,
   // No limit on tickets - users can buy as many as they want
-  MAX_TICKETS_PER_USER: null, // null means unlimited
+  MAX_TICKETS_PER_USER: null, // null means unlimited 
   MIN_TICKETS_FOR_DRAW: 1, // Minimum tickets needed for a draw
 };
 

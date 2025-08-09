@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SeasonStatus as SeasonStatusType } from '../types';
 import { SEASON_CONFIG, COMMISSION_PERCENTAGE } from '../constants';
 import { priceService } from '../services/priceService';
@@ -6,10 +6,17 @@ import { solanaService } from '../services/solanaService';
 
 export const SeasonStatus: React.FC = () => {
   const [solPriceUSD, setSolPriceUSD] = useState(100);
-  
-  // Season end time - 7 days from now, fixed and memoized
-  const seasonEndTime = useMemo(() => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), []);
-  
+
+  // Season end time - localStorage ile kalıcı
+  const [seasonEndTime, setSeasonEndTime] = useState<Date>(() => {
+    const key = 'solotto_season_1_end';
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem(key) : null;
+    if (saved) return new Date(Number(saved));
+    const endMs = Date.now() + SEASON_CONFIG.DURATION_DAYS * 24 * 60 * 60 * 1000;
+    if (typeof window !== 'undefined') window.localStorage.setItem(key, String(endMs));
+    return new Date(endMs);
+  });
+
   const [seasonStatus, setSeasonStatus] = useState<SeasonStatusType>({
     currentSeason: 1,
     totalTicketsSold: 0,
@@ -31,13 +38,12 @@ export const SeasonStatus: React.FC = () => {
         // Load prices
         const solPrice = await priceService.getSolPriceUSD();
         await priceService.getTicketPriceSOL();
-        
         setSolPriceUSD(solPrice);
-        
+
         // Load season data from blockchain
         const seasonData = await solanaService.getSeasonData(1);
         console.log('Loaded season data from blockchain:', seasonData);
-        
+
         if (seasonData) {
           setSeasonStatus(prev => ({
             ...prev,
@@ -48,6 +54,16 @@ export const SeasonStatus: React.FC = () => {
             winner: seasonData.winner,
             winnerTicketId: seasonData.winnerTicketId,
           }));
+
+          // Eğer on-chain bir endTime geldiyse ve farklıysa güncelle
+          if (seasonData.endTime) {
+            const onChainEnd = new Date(seasonData.endTime).getTime();
+            if (Number.isFinite(onChainEnd) && onChainEnd !== seasonEndTime.getTime()) {
+              const key = 'solotto_season_1_end';
+              if (typeof window !== 'undefined') window.localStorage.setItem(key, String(onChainEnd));
+              setSeasonEndTime(new Date(onChainEnd));
+            }
+          }
         }
       } catch (error) {
         console.error('Error loading data in SeasonStatus:', error);
@@ -55,28 +71,29 @@ export const SeasonStatus: React.FC = () => {
     };
 
     loadData();
-    
+
     // Refresh data every 30 seconds to show live updates
     const interval = setInterval(loadData, 30000);
-    
+
     // Listen for ticket updates
     const handleTicketsUpdated = () => {
       loadData(); // Reload data immediately when tickets are updated
     };
-    
+
     window.addEventListener('ticketsUpdated', handleTicketsUpdated);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('ticketsUpdated', handleTicketsUpdated);
     };
-  }, []);
+  }, [seasonEndTime]);
 
+  // Live countdown timer - her saniye çalışır
   useEffect(() => {
-    const timer = setInterval(() => {
+    const updateTimeRemaining = () => {
       const now = new Date();
       const timeLeft = seasonEndTime.getTime() - now.getTime();
-      
+
       if (timeLeft <= 0) {
         // Season ended
         setSeasonStatus(prev => ({
@@ -87,19 +104,25 @@ export const SeasonStatus: React.FC = () => {
         }));
         return;
       }
-      
+
       // Calculate remaining time
       const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
       const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
       const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-      
+
       setSeasonStatus(prev => ({
         ...prev,
         timeRemaining: { days, hours, minutes, seconds },
       }));
-    }, 1000);
+    };
+
+    // Ilk hesaplama hemen yap
+    updateTimeRemaining();
     
+    // Her saniye güncelle (canlı sayaç)
+    const timer = setInterval(updateTimeRemaining, 1000);
+
     return () => clearInterval(timer);
   }, [seasonEndTime]);
 
@@ -217,8 +240,6 @@ export const SeasonStatus: React.FC = () => {
           </div>
         </div>
       </div>
-
-
 
       {/* Status Indicator */}
       <div className="text-center">
