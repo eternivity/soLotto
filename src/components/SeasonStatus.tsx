@@ -93,8 +93,12 @@ export const SeasonStatus: React.FC = () => {
             const onChainEnd = new Date(seasonData.endTime).getTime();
             if (Number.isFinite(onChainEnd) && onChainEnd !== seasonEndTime.getTime()) {
               const key = 'solotto_season_1_end';
-              if (typeof window !== 'undefined') window.localStorage.setItem(key, String(onChainEnd));
-              setSeasonEndTime(new Date(onChainEnd));
+              if (typeof window !== 'undefined') {
+                window.localStorage.setItem(key, String(onChainEnd));
+                console.log('On-chain end time updated, sayfa yenilenecek...');
+                // useMemo yeni değeri yüklemesi için sayfa yenile
+                window.location.reload();
+              }
             }
           }
         }
