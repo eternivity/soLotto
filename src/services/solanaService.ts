@@ -303,7 +303,9 @@ export class SolanaService {
                   }
                   console.log('🔍 SeasonData: Total transfer to treasury:', transferToTreasury, 'lamports');
                   if (transferToTreasury > 0) {
-                    txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
+                    // Calculate tickets based on $1 per ticket at current SOL price
+                    const ticketPriceLamports = Math.floor(LAMPORTS_PER_SOL / 100); // $1 = 0.01 SOL @ $100
+                    txTickets = Math.floor(transferToTreasury / ticketPriceLamports);
                     console.log('📊 SeasonData: Found TIX purchase:', txTickets, 'tickets, transfer:', transferToTreasury / LAMPORTS_PER_SOL, 'SOL');
                     break; // One memo per transaction
                   } else {
@@ -350,8 +352,9 @@ export class SolanaService {
             for (const txIx of allIxs) {
               transferToTreasury += this.extractSolTransferLamportsTo(txIx, TREASURY_WALLET);
             }
-            if (transferToTreasury > 0.5 * LAMPORTS_PER_SOL) {
-              txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
+            if (transferToTreasury > 0.005 * LAMPORTS_PER_SOL) { // Minimum 0.005 SOL for 0.5 tickets
+              const ticketPriceLamports = Math.floor(LAMPORTS_PER_SOL / 100); // $1 = 0.01 SOL @ $100
+              txTickets = Math.floor(transferToTreasury / ticketPriceLamports);
               console.log('📊 SeasonData: Found Season 2 transfer:', txTickets, 'tickets (amount-based)');
             }
           }
