@@ -98,6 +98,7 @@ export const BuyTicket: React.FC = () => {
       // Wait for confirmation
       const confirmation = await connection.confirmTransaction(signature, 'confirmed');
       console.log('Transaction confirmed:', confirmation);
+      toast.success(`Satın alma başarılı! ${quantity} bilet onaylandı.`);
       
                 // Generate ticket numbers
           const newTicketNumbers = generateTicketNumbers(quantity, currentTicketCount + 1);
