@@ -16,9 +16,11 @@ const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfc
 export class SolanaService {
   private connection: Connection;
   private program: Program<Idl>;
+  private memoProgram: PublicKey;
 
   constructor() {
     this.connection = new Connection(NETWORK_CONFIG.endpoint, NETWORK_CONFIG.commitment);
+    this.memoProgram = MEMO_PROGRAM_ID;
 
     const dummyProvider = {
       connection: this.connection,
