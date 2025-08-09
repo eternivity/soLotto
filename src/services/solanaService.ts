@@ -45,25 +45,17 @@ export class SolanaService {
   }
 
   private buildMemoIx(seasonId: number, quantity: number, lamports: number, buyerPublicKey?: PublicKey): TransactionInstruction {
-    // JSON format memo for getUserTickets compatibility
-    const ticketNumbers: string[] = [];
-    const startTicketNumber = Date.now();
-    
-    for (let i = 0; i < quantity; i++) {
-      ticketNumbers.push(`TKT-${(startTicketNumber + i).toString().padStart(6, '0')}`);
-    }
-    
+    // 🔧 Optimized minimal memo to avoid "Transaction too large" error
     const memoData = {
       type: 'TICKET_PURCHASE',
       seasonId,
       quantity,
-      lamports,
       buyer: buyerPublicKey?.toString(),
-      ticketNumbers,
-      timestamp: new Date().toISOString(),
+      // ⚡ Removed large fields: ticketNumbers, lamports, timestamp
     };
     
     const memo = JSON.stringify(memoData);
+    console.log('📝 Memo size:', memo.length, 'bytes:', memo);
     return new TransactionInstruction({ programId: MEMO_PROGRAM_ID, keys: [], data: Buffer.from(memo, 'utf8') });
   }
 
@@ -397,7 +389,7 @@ export class SolanaService {
                           seasonId: memoData.seasonId || 2,
                           walletAddress: userPublicKey.toString(),
                           purchaseTime: new Date(tx.blockTime! * 1000),
-                          ticketNumber: memoData.ticketNumbers ? memoData.ticketNumbers[0] : `TKT-${Date.now()}`,
+                          ticketNumber: `TKT-${tx.blockTime}-${memoData.quantity}`, // ⚡ Optimized ticket ID
                           quantity: memoData.quantity || 1,
                           txSignature: txInfo.signature,
                         };
