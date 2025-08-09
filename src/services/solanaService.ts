@@ -179,9 +179,12 @@ export class SolanaService {
       console.warn('Program Season fetch failed, falling back to memo aggregation:', (error as Error).message);
       // Memo aggregation fallback (global, works even without program)
       try {
-        const treasury = new PublicKey(COMMISSION_WALLET);
-        const signatures = await this.connection.getSignaturesForAddress(treasury, { limit: 1000 });
-        const txs = await this.connection.getParsedTransactions(signatures.map(s => s.signature), { maxSupportedTransactionVersion: 0 });
+        const treasury = new PublicKey(TREASURY_WALLET);
+        const admin = new PublicKey(COMMISSION_WALLET);
+        const sigsTreasury = await this.connection.getSignaturesForAddress(treasury, { limit: 1000 });
+        const sigsAdmin = await this.connection.getSignaturesForAddress(admin, { limit: 1000 });
+        const uniqueSigs = Array.from(new Set([...sigsTreasury, ...sigsAdmin].map(s => s.signature)));
+        const txs = await this.connection.getParsedTransactions(uniqueSigs, { maxSupportedTransactionVersion: 0 });
 
         let ticketsSold = 0;
         for (const tx of txs) {
@@ -194,6 +197,7 @@ export class SolanaService {
             const parts = memo.split(';');
             const seasonPart = parts.find(p => p.startsWith('season='));
             const qtyPart = parts.find(p => p.startsWith('qty='));
+            const lamportsPart = parts.find(p => p.startsWith('lamports='));
             const seasonVal = seasonPart ? Number(seasonPart.split('=')[1]) : NaN;
             const qtyVal = qtyPart ? Number(qtyPart.split('=')[1]) : 0;
             if (seasonVal === seasonId && Number.isFinite(qtyVal)) ticketsSold += qtyVal;
