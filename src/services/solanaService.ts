@@ -397,38 +397,59 @@ export class SolanaService {
                   const memoText = Buffer.from(data).toString('utf8');
                   console.log('📝 Found memo:', memoText);
                   
-                  // 🚀 Ultra-minimal memo check: TIX type
+                  // 🔄 Multi-format memo support (backward compatibility)
+                  let isTicketMemo = false;
+                  let memoData: any = {};
+                  let ticketQuantity = 0;
+                  
+                  // Format 3: New ultra-minimal {"t":"TIX","s":2}
                   if (memoText.includes('TIX')) {
-                    console.log('🎫 Found TIX memo:', memoText);
+                    console.log('🎫 Found TIX memo (Format 3):', memoText);
                     try {
-                      const memoData = JSON.parse(memoText);
-                      console.log('📊 Parsed memo data:', memoData);
-                      
-                      // 💡 Amount-based quantity calculation
+                      memoData = JSON.parse(memoText);
+                      isTicketMemo = true;
+                      // Amount-based calculation
                       const transferAmount = this.extractTransferAmount(tx, userPublicKey);
-                      const ticketQuantity = Math.floor(transferAmount / LAMPORTS_PER_SOL); // $1 = 1 ticket
-                      
-                      console.log('💰 Transfer amount:', transferAmount, 'lamports');
-                      console.log('🎫 Calculated tickets:', ticketQuantity);
-                      
-                      if (ticketQuantity > 0) {
-                        // Bu user'ın bileti - amount-based
-                        const ticket = {
-                          id: `${txInfo.signature}_${Date.now()}`,
-                          seasonId: memoData.s || 2, // 's' field
-                          walletAddress: userPublicKey.toString(),
-                          purchaseTime: new Date(tx.blockTime! * 1000),
-                          ticketNumber: `TIX-${tx.blockTime}-${ticketQuantity}`, // ⚡ Amount-based ID
-                          quantity: ticketQuantity, // 🚀 From transfer amount!
-                          txSignature: txInfo.signature,
-                        };
-                        console.log('✅ Adding amount-based ticket:', ticket);
-                        userTickets.push(ticket);
+                      ticketQuantity = Math.floor(transferAmount / LAMPORTS_PER_SOL);
+                    } catch (e) { /* ignore */ }
+                  }
+                  
+                  // Format 2: Old JSON {"type":"TICKET_PURCHASE",...}
+                  else if (memoText.includes('TICKET_PURCHASE')) {
+                    console.log('🎫 Found TICKET_PURCHASE memo (Format 2):', memoText);
+                    try {
+                      memoData = JSON.parse(memoText);
+                      if (memoData.buyer === userPublicKey.toString()) {
+                        isTicketMemo = true;
+                        ticketQuantity = memoData.quantity || 1; // From JSON
                       }
-                    } catch (parseError) {
-                      console.error('❌ JSON parse error for memo:', memoText, parseError);
-                      continue;
+                    } catch (e) { /* ignore */ }
+                  }
+                  
+                  // Format 1: No memo, amount-based only (legacy transfers)
+                  else if (memoText.length < 10) {
+                    console.log('🎫 Checking legacy transfer (Format 1)');
+                    const transferAmount = this.extractTransferAmount(tx, userPublicKey);
+                    if (transferAmount > 0.5 * LAMPORTS_PER_SOL) { // At least 0.5 SOL
+                      isTicketMemo = true;
+                      ticketQuantity = Math.floor(transferAmount / LAMPORTS_PER_SOL);
+                      memoData = { legacy: true };
                     }
+                  }
+                  
+                  // Create ticket if any format matched
+                  if (isTicketMemo && ticketQuantity > 0) {
+                    const ticket = {
+                      id: `${txInfo.signature}_${Date.now()}`,
+                      seasonId: memoData.s || memoData.seasonId || 1, // Support all formats
+                      walletAddress: userPublicKey.toString(),
+                      purchaseTime: new Date(tx.blockTime! * 1000),
+                      ticketNumber: memoData.legacy ? `LEG-${tx.blockTime}` : `TIX-${tx.blockTime}-${ticketQuantity}`,
+                      quantity: ticketQuantity,
+                      txSignature: txInfo.signature,
+                    };
+                    console.log('✅ Adding multi-format ticket:', ticket);
+                    userTickets.push(ticket);
                   }
                 }
               } catch (instructionError) {
