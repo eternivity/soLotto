@@ -62,6 +62,12 @@ export const SeasonStatus: React.FC = () => {
     (window as any).setTestEndTime = setTestEndTime;
     (window as any).clearAllData = clearAllData; // 🆕 Fresh start function
     (window as any).clearSeasonData = clearAllData; // Backward compatibility
+    
+    // 🔧 Debug: Force countdown refresh
+    (window as any).refreshCountdown = () => {
+      console.log('🔄 Force refreshing countdown...');
+      window.location.reload();
+    };
   }
 
   const [seasonStatus, setSeasonStatus] = useState<SeasonStatusType>({

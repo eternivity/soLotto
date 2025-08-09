@@ -274,16 +274,66 @@ export class SolanaService {
           const outer = tx.transaction.message.instructions as any[];
           const inner = ((tx.meta?.innerInstructions || []).flatMap((ii: any) => ii.instructions) as any[]) || [];
           const allIxs = [...outer, ...inner];
+          // 🔄 Multi-format ticket counting for Season aggregation
+          let txTickets = 0;
+          
           for (const ix of allIxs) {
             const memo = this.extractMemoFromParsedIx(ix);
-            if (!memo || !memo.startsWith('solotto:')) continue;
-            const parts = memo.split(';');
-            const seasonPart = parts.find(p => p.startsWith('season='));
-            const qtyPart = parts.find(p => p.startsWith('qty='));
-            const seasonVal = seasonPart ? Number(seasonPart.split('=')[1]) : NaN;
-            const qtyVal = qtyPart ? Number(qtyPart.split('=')[1]) : 0;
-            if (seasonVal === seasonId && Number.isFinite(qtyVal)) ticketsSold += qtyVal;
+            if (!memo) continue;
+            
+            // Format 3: {"t":"TIX","s":2} - amount-based (NEW)
+            if (memo.includes('TIX')) {
+              try {
+                const memoData = JSON.parse(memo);
+                if (memoData.s === seasonId) {
+                  // Calculate from transfer amount
+                  const transferToTreasury = this.extractSolTransferLamportsTo([ix], TREASURY_WALLET);
+                  if (transferToTreasury > 0) {
+                    txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
+                    console.log('📊 SeasonData: Found TIX purchase:', txTickets, 'tickets');
+                    break; // One memo per transaction
+                  }
+                }
+              } catch (e) { /* ignore */ }
+            }
+            
+            // Format 2: {"type":"TICKET_PURCHASE",...} - JSON quantity
+            else if (memo.includes('TICKET_PURCHASE')) {
+              try {
+                const memoData = JSON.parse(memo);
+                if (memoData.seasonId === seasonId) {
+                  txTickets = memoData.quantity || 1;
+                  console.log('📊 SeasonData: Found TICKET_PURCHASE:', txTickets, 'tickets');
+                  break;
+                }
+              } catch (e) { /* ignore */ }
+            }
+            
+            // Format 1: Legacy "solotto:" - old format  
+            else if (memo.startsWith('solotto:')) {
+              const parts = memo.split(';');
+              const seasonPart = parts.find(p => p.startsWith('season='));
+              const qtyPart = parts.find(p => p.startsWith('qty='));
+              const seasonVal = seasonPart ? Number(seasonPart.split('=')[1]) : NaN;
+              const qtyVal = qtyPart ? Number(qtyPart.split('=')[1]) : 0;
+              if (seasonVal === seasonId && Number.isFinite(qtyVal)) {
+                txTickets = qtyVal;
+                console.log('📊 SeasonData: Found legacy purchase:', txTickets, 'tickets');
+                break;
+              }
+            }
           }
+          
+          // If no memo found, try amount-based detection for Season 2 legacy transfers
+          if (txTickets === 0 && seasonId === 2) {
+            const transferToTreasury = this.extractSolTransferLamportsTo(allIxs, TREASURY_WALLET);
+            if (transferToTreasury > 0.5 * LAMPORTS_PER_SOL) {
+              txTickets = Math.floor(transferToTreasury / LAMPORTS_PER_SOL);
+              console.log('📊 SeasonData: Found Season 2 transfer:', txTickets, 'tickets (amount-based)');
+            }
+          }
+          
+          ticketsSold += txTickets;
           // If this tx has our season memo, sum transfers to admin wallet as realized commission
           const containsOurMemo = allIxs.some(ix => {
             const m = this.extractMemoFromParsedIx(ix);
