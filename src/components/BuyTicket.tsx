@@ -56,11 +56,7 @@ export const BuyTicket: React.FC = () => {
       return;
     }
 
-    // 🚨 Transaction size limit check
-    if (quantity > 50) {
-      toast.error('Maximum 50 tickets per transaction to avoid size limit. Please split large purchases.');
-      return;
-    }
+    // ✅ No quantity limits with ultra-minimal memo! (removed 50 ticket limit)
 
     setIsLoading(true);
     
@@ -293,9 +289,9 @@ export const BuyTicket: React.FC = () => {
                   </button>
                 </div>
                 
-                {quantity >= 25 && (
-                  <div className="text-xs text-yellow-400 text-center mt-2">
-                    ⚠️ Large purchases may exceed transaction size limit
+                {quantity >= 100 && (
+                  <div className="text-xs text-green-400 text-center mt-2">
+                    🚀 Large purchase enabled with ultra-minimal transactions!
                   </div>
                 )}
               </div>

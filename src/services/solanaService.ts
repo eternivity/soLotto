@@ -45,17 +45,17 @@ export class SolanaService {
   }
 
   private buildMemoIx(seasonId: number, quantity: number, lamports: number, buyerPublicKey?: PublicKey): TransactionInstruction {
-    // 🔧 Optimized minimal memo to avoid "Transaction too large" error
+    // 🚀 Ultra-minimal memo: 32 bytes max, quantity from transfer amount
     const memoData = {
-      type: 'TICKET_PURCHASE',
-      seasonId,
-      quantity,
-      buyer: buyerPublicKey?.toString(),
-      // ⚡ Removed large fields: ticketNumbers, lamports, timestamp
+      t: 'TIX', // type: 'TICKET_PURCHASE' → 't': 'TIX' (3 chars)
+      s: seasonId, // seasonId → s
+      // 💡 quantity removed - calculated from transfer amount!
+      // 💡 buyer removed - from transaction sender!
     };
     
     const memo = JSON.stringify(memoData);
-    console.log('📝 Memo size:', memo.length, 'bytes:', memo);
+    console.log('🚀 Ultra-minimal memo size:', memo.length, 'bytes:', memo);
+    console.log('💡 Quantity will be calculated from transfer amount:', lamports / LAMPORTS_PER_SOL, 'SOL =', Math.floor(lamports / LAMPORTS_PER_SOL), 'tickets');
     return new TransactionInstruction({ programId: MEMO_PROGRAM_ID, keys: [], data: Buffer.from(memo, 'utf8') });
   }
 
@@ -321,6 +321,30 @@ export class SolanaService {
     }
   }
 
+  // 💡 Helper: Extract transfer amount from transaction
+  private extractTransferAmount(tx: any, userPublicKey: PublicKey): number {
+    try {
+      if (!tx.meta || !tx.meta.preBalances || !tx.meta.postBalances) return 0;
+      
+      // Find user's account index
+      const accountKeys = tx.transaction.message.staticAccountKeys || tx.transaction.message.accountKeys;
+      const userIndex = accountKeys.findIndex((key: any) => key.equals(userPublicKey));
+      
+      if (userIndex === -1) return 0;
+      
+      // Calculate balance difference (amount sent)
+      const preBal = tx.meta.preBalances[userIndex];
+      const postBal = tx.meta.postBalances[userIndex];
+      const diff = preBal - postBal;
+      
+      console.log('💰 Balance diff calculation:', {preBal, postBal, diff});
+      return Math.max(0, diff - 5000); // Subtract approximate tx fee
+    } catch (error) {
+      console.error('Error extracting transfer amount:', error);
+      return 0;
+    }
+  }
+
   async getUserTickets(userPublicKey: PublicKey): Promise<any[]> {
     try {
       console.log('🔍 Fetching user tickets from blockchain for:', userPublicKey.toString());
@@ -373,30 +397,33 @@ export class SolanaService {
                   const memoText = Buffer.from(data).toString('utf8');
                   console.log('📝 Found memo:', memoText);
                   
-                  // Bilet satın alma memo'sunu parse et
-                  if (memoText.includes('TICKET_PURCHASE')) {
-                    console.log('🎫 Found TICKET_PURCHASE memo:', memoText);
+                  // 🚀 Ultra-minimal memo check: TIX type
+                  if (memoText.includes('TIX')) {
+                    console.log('🎫 Found TIX memo:', memoText);
                     try {
                       const memoData = JSON.parse(memoText);
                       console.log('📊 Parsed memo data:', memoData);
-                      console.log('👤 Memo buyer:', memoData.buyer);
-                      console.log('👤 Current user:', userPublicKey.toString());
                       
-                      if (memoData.buyer === userPublicKey.toString()) {
-                        // Bu user'ın bileti
+                      // 💡 Amount-based quantity calculation
+                      const transferAmount = this.extractTransferAmount(tx, userPublicKey);
+                      const ticketQuantity = Math.floor(transferAmount / LAMPORTS_PER_SOL); // $1 = 1 ticket
+                      
+                      console.log('💰 Transfer amount:', transferAmount, 'lamports');
+                      console.log('🎫 Calculated tickets:', ticketQuantity);
+                      
+                      if (ticketQuantity > 0) {
+                        // Bu user'ın bileti - amount-based
                         const ticket = {
                           id: `${txInfo.signature}_${Date.now()}`,
-                          seasonId: memoData.seasonId || 2,
+                          seasonId: memoData.s || 2, // 's' field
                           walletAddress: userPublicKey.toString(),
                           purchaseTime: new Date(tx.blockTime! * 1000),
-                          ticketNumber: `TKT-${tx.blockTime}-${memoData.quantity}`, // ⚡ Optimized ticket ID
-                          quantity: memoData.quantity || 1,
+                          ticketNumber: `TIX-${tx.blockTime}-${ticketQuantity}`, // ⚡ Amount-based ID
+                          quantity: ticketQuantity, // 🚀 From transfer amount!
                           txSignature: txInfo.signature,
                         };
-                        console.log('✅ Adding ticket for user:', ticket);
+                        console.log('✅ Adding amount-based ticket:', ticket);
                         userTickets.push(ticket);
-                      } else {
-                        console.log('❌ Memo buyer mismatch - skipping');
                       }
                     } catch (parseError) {
                       console.error('❌ JSON parse error for memo:', memoText, parseError);
