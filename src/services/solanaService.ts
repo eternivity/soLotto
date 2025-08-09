@@ -336,33 +336,61 @@ export class SolanaService {
           
           if (!tx || !tx.meta) continue;
           
-          // SPL Memo instruction'ları ara
-          for (const instruction of tx.transaction.message.instructions) {
-            if (instruction.programId.equals(this.memoProgram)) {
-              const data = instruction.data;
-              const memoText = Buffer.from(data).toString('utf8');
-              
-              // Bilet satın alma memo'sunu parse et
-              if (memoText.includes('TICKET_PURCHASE')) {
-                try {
-                  const memoData = JSON.parse(memoText);
-                  if (memoData.buyer === userPublicKey.toString()) {
-                    // Bu user'ın bileti
-                    const ticket = {
-                      id: `${txInfo.signature}_${Date.now()}`,
-                      seasonId: memoData.seasonId || 1,
-                      walletAddress: userPublicKey.toString(),
-                      purchaseTime: new Date(tx.blockTime! * 1000),
-                      ticketNumber: memoData.ticketNumbers ? memoData.ticketNumbers[0] : `TKT-${Date.now()}`,
-                      quantity: memoData.quantity || 1,
-                      txSignature: txInfo.signature,
-                    };
-                    userTickets.push(ticket);
+          // SPL Memo instruction'ları ara - Versioned transaction uyumlu
+          const message = tx.transaction.message;
+          const instructions = 'instructions' in message ? message.instructions : message.compiledInstructions;
+          
+          if (instructions) {
+            for (const instruction of instructions) {
+              try {
+                // Versioned transaction'da programId index üzerinden çözülür
+                let programId: PublicKey;
+                let data: Uint8Array;
+                
+                if ('programId' in instruction) {
+                  // Legacy instruction
+                  programId = instruction.programId;
+                  data = instruction.data;
+                } else {
+                  // Compiled instruction (versioned)
+                  const accountKeys = message.staticAccountKeys || [];
+                  if (instruction.programIdIndex < accountKeys.length) {
+                    programId = accountKeys[instruction.programIdIndex];
+                    data = instruction.data;
+                  } else {
+                    continue;
                   }
-                } catch (parseError) {
-                  // JSON parse hatası - skip
-                  continue;
                 }
+                
+                if (programId.equals(this.memoProgram)) {
+                  const memoText = Buffer.from(data).toString('utf8');
+                  
+                  // Bilet satın alma memo'sunu parse et
+                  if (memoText.includes('TICKET_PURCHASE')) {
+                    try {
+                      const memoData = JSON.parse(memoText);
+                      if (memoData.buyer === userPublicKey.toString()) {
+                        // Bu user'ın bileti
+                        const ticket = {
+                          id: `${txInfo.signature}_${Date.now()}`,
+                          seasonId: memoData.seasonId || 1,
+                          walletAddress: userPublicKey.toString(),
+                          purchaseTime: new Date(tx.blockTime! * 1000),
+                          ticketNumber: memoData.ticketNumbers ? memoData.ticketNumbers[0] : `TKT-${Date.now()}`,
+                          quantity: memoData.quantity || 1,
+                          txSignature: txInfo.signature,
+                        };
+                        userTickets.push(ticket);
+                      }
+                    } catch (parseError) {
+                      // JSON parse hatası - skip
+                      continue;
+                    }
+                  }
+                }
+              } catch (instructionError) {
+                // Instruction işleme hatası - skip
+                continue;
               }
             }
           }
