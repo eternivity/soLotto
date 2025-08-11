@@ -3,7 +3,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 
 import { COMMISSION_WALLET, TREASURY_WALLET } from '../constants';
 import { solanaService } from '../services/solanaService';
-import { useToast } from '../contexts/ToastContext';
+import { useToast } from './ToastProvider';
 
 export const AdminPanel: React.FC = () => {
   const { publicKey, connected } = useWallet();
