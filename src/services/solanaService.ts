@@ -231,7 +231,7 @@ export class SolanaService {
         throw new Error('Program not found - using fallback');
       }
     } catch (error) {
-      console.log('⚠️ Anchor startSeason failed, using fallback:', error.message);
+      console.log('⚠️ Anchor startSeason failed, using fallback:', (error as Error).message);
       
       // Fallback: Just create a memo transaction to record season start
       const memoData = {
@@ -296,7 +296,7 @@ export class SolanaService {
         throw new Error('Program not found - using fallback');
       }
     } catch (error) {
-      console.log('⚠️ Anchor endSeason failed, using fallback:', error.message);
+      console.log('⚠️ Anchor endSeason failed, using fallback:', (error as Error).message);
       
       // Fallback: Just create a memo transaction to record season end
       const memoData = {

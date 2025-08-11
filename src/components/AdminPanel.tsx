@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+
 import { COMMISSION_WALLET, TREASURY_WALLET } from '../constants';
 import { solanaService } from '../services/solanaService';
 import { useToast } from '../contexts/ToastContext';
 
 export const AdminPanel: React.FC = () => {
   const { publicKey, connected } = useWallet();
-  const { showToast } = useToast();
+  const { show } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
   const [seasonData, setSeasonData] = useState({
@@ -65,7 +65,7 @@ export const AdminPanel: React.FC = () => {
       
       await solanaService.startSeason(newSeasonId, endTime);
       
-      showToast('success', `Season ${newSeasonId} started successfully!`);
+      show('success', `Season ${newSeasonId} started successfully!`);
       
       // Reload data
       setTimeout(() => {
@@ -74,7 +74,7 @@ export const AdminPanel: React.FC = () => {
       
     } catch (error) {
       console.error('Error starting season:', error);
-      showToast('error', `Failed to start season: ${error.message}`);
+      show('error', `Failed to start season: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +88,7 @@ export const AdminPanel: React.FC = () => {
     try {
       await solanaService.endSeason(seasonData.currentSeason);
       
-      showToast('success', `Season ${seasonData.currentSeason} ended successfully!`);
+      show('success', `Season ${seasonData.currentSeason} ended successfully!`);
       
       // Reload data
       setTimeout(() => {
@@ -97,7 +97,7 @@ export const AdminPanel: React.FC = () => {
       
     } catch (error) {
       console.error('Error ending season:', error);
-      showToast('error', `Failed to end season: ${error.message}`);
+      show('error', `Failed to end season: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
     }
@@ -111,13 +111,13 @@ export const AdminPanel: React.FC = () => {
     try {
       const amountSOL = parseFloat(extraPrizeAmount);
       if (isNaN(amountSOL) || amountSOL <= 0) {
-        showToast('error', 'Please enter a valid SOL amount');
+        show('error', 'Please enter a valid SOL amount');
         return;
       }
       
       await solanaService.addExtraPrize(amountSOL);
       
-      showToast('success', `Added ${amountSOL} SOL to prize pool!`);
+      show('success', `Added ${amountSOL} SOL to prize pool!`);
       setExtraPrizeAmount('');
       
       // Reload data
@@ -127,7 +127,7 @@ export const AdminPanel: React.FC = () => {
       
     } catch (error) {
       console.error('Error adding extra prize:', error);
-      showToast('error', `Failed to add extra prize: ${error.message}`);
+      show('error', `Failed to add extra prize: ${(error as Error).message}`);
     } finally {
       setIsLoading(false);
     }
