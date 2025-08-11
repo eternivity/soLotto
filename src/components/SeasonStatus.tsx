@@ -135,8 +135,8 @@ export const SeasonStatus: React.FC = () => {
 
     loadData();
 
-    // Refresh data every 10 seconds to show live updates (faster for testing)
-    const interval = setInterval(loadData, 10000);
+    // Refresh data every 30 seconds to avoid rate limiting
+    const interval = setInterval(loadData, 30000);
 
     // Listen for ticket updates
     const handleTicketsUpdated = () => {

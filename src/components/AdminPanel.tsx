@@ -49,7 +49,7 @@ export const AdminPanel: React.FC = () => {
     };
 
     loadSeasonData();
-    const interval = setInterval(loadSeasonData, 10000); // Update every 10 seconds
+    const interval = setInterval(loadSeasonData, 30000); // Update every 30 seconds (reduced frequency)
     return () => clearInterval(interval);
   }, [isAdmin]);
 
