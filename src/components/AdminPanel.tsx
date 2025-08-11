@@ -88,9 +88,16 @@ export const AdminPanel: React.FC = () => {
     try {
       await solanaService.endSeason(seasonData.currentSeason);
       
+      // Update local state immediately
+      setSeasonData(prev => ({
+        ...prev,
+        isActive: false,
+        endTime: new Date()
+      }));
+      
       show('success', `Season ${seasonData.currentSeason} ended successfully!`);
       
-      // Reload data
+      // Reload data after 2 seconds
       setTimeout(() => {
         window.location.reload();
       }, 2000);

@@ -546,18 +546,51 @@ export class SolanaService {
             }
           }
         }
+        
+        // Check for SEASON_END memos to determine if season is actually ended
+        let seasonEnded = false;
+        let seasonEndTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Default 7 days from now
+        
+        for (const tx of txs) {
+          if (!tx) continue;
+          const outer = tx.transaction.message.instructions as any[];
+          const inner = ((tx.meta?.innerInstructions || []).flatMap((ii: any) => ii.instructions) as any[]) || [];
+          const allIxs = [...outer, ...inner];
+          
+          for (const ix of allIxs) {
+            const memo = this.extractMemoFromParsedIx(ix);
+            if (!memo) continue;
+            
+            if (memo.includes('SEASON_END')) {
+              try {
+                const memoData = JSON.parse(memo);
+                if (memoData.s === seasonId) {
+                  seasonEnded = true;
+                  seasonEndTime = new Date(memoData.endTime * 1000);
+                  console.log('🔍 SeasonData: Found SEASON_END memo for season', seasonId, 'at', seasonEndTime);
+                  break;
+                }
+              } catch (e) {
+                console.error('❌ SeasonData: SEASON_END memo parse error:', e);
+              }
+            }
+          }
+          if (seasonEnded) break;
+        }
+        
         console.log('📊 Memo aggregation results:');
         console.log('📊 Season ID:', seasonId);
         console.log('📊 Tickets sold:', ticketsSold);
         console.log('📊 Prize pool ($):', ticketsSold * 1.0);
         console.log('📊 Commission lamports:', commissionLamportsReceived);
+        console.log('📊 Season ended:', seasonEnded);
         
         return {
           seasonId,
           totalTicketsSold: ticketsSold,
           totalPrizePool: ticketsSold * 1.0, // $1 per ticket (gross)
-          isActive: true,
-          endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          isActive: !seasonEnded, // Season is active if not ended
+          endTime: seasonEndTime,
           commissionLamportsReceived,
         };
       } catch (e) {
