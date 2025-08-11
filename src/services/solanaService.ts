@@ -215,12 +215,11 @@ export class SolanaService {
         const treasuryPk = new PublicKey(TREASURY_WALLET);
         
         const ix = await (this.program as any).methods
-          .startSeason(seasonId, Math.floor(endTime.getTime() / 1000))
+          .startSeason(seasonId)
           .accounts({
             admin: adminPk,
-            season: seasonPda,
-            commissionVault: commissionPda,
             treasury: treasuryPk,
+            season: seasonPda,
             systemProgram: SystemProgram.programId,
           })
           .instruction();
@@ -280,13 +279,10 @@ export class SolanaService {
         const treasuryPk = new PublicKey(TREASURY_WALLET);
         
         const ix = await (this.program as any).methods
-          .endSeason(seasonId)
+          .endSeason()
           .accounts({
             admin: adminPk,
             season: seasonPda,
-            commissionVault: commissionPda,
-            treasury: treasuryPk,
-            systemProgram: SystemProgram.programId,
           })
           .instruction();
         
