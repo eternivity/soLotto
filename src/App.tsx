@@ -7,6 +7,7 @@ import { Winners } from './components/Winners';
 import { MyTickets } from './components/MyTickets';
 import { FAQ } from './components/FAQ';
 import { CommissionClaim } from './components/CommissionClaim';
+import { AdminPanel } from './components/AdminPanel';
 import { WinnerClaim } from './components/WinnerClaim';
 import { Footer } from './components/Footer';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -105,6 +106,11 @@ function App() {
                 {/* Commission Dashboard - Admin Only */}
                 <section className="mb-16">
                   <CommissionClaim />
+                </section>
+
+                {/* Admin Panel - Admin Only */}
+                <section className="mb-16">
+                  <AdminPanel />
                 </section>
 
                 {/* FAQ Section */}

@@ -44,6 +44,12 @@ export class SolanaService {
     return balance / LAMPORTS_PER_SOL;
   }
 
+  async getAccountBalance(accountAddress: string): Promise<number> {
+    const publicKey = new PublicKey(accountAddress);
+    const balance = await this.connection.getBalance(publicKey);
+    return balance / LAMPORTS_PER_SOL;
+  }
+
   private buildMemoIx(seasonId: number, quantity: number, lamports: number, buyerPublicKey?: PublicKey): TransactionInstruction {
     // 🚀 Ultra-minimal memo: 32 bytes max, quantity from transfer amount
     const memoData = {
@@ -187,11 +193,180 @@ export class SolanaService {
     return tx;
   }
 
-  async startSeason(adminPublicKey: PublicKey, _treasuryPublicKey: PublicKey, _seasonId: number): Promise<Transaction> {
+  async startSeason(seasonId: number, endTime: Date): Promise<Transaction> {
     const tx = new Transaction();
+    
+    try {
+      // Try to use Anchor program if available
+      const programId = new PublicKey(PROGRAM_ID);
+      const programInfo = await this.connection.getAccountInfo(programId);
+      
+      if (programInfo && programInfo.executable) {
+        const [seasonPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('season'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+          programId
+        );
+        const [commissionPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('commission'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+          programId
+        );
+
+        const adminPk = new PublicKey(COMMISSION_WALLET);
+        const treasuryPk = new PublicKey(TREASURY_WALLET);
+        
+        const ix = await (this.program as any).methods
+          .startSeason(seasonId, Math.floor(endTime.getTime() / 1000))
+          .accounts({
+            admin: adminPk,
+            season: seasonPda,
+            commissionVault: commissionPda,
+            treasury: treasuryPk,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
+        
+        tx.add(ix);
+        console.log('✅ Anchor startSeason instruction added');
+      } else {
+        throw new Error('Program not found - using fallback');
+      }
+    } catch (error) {
+      console.log('⚠️ Anchor startSeason failed, using fallback:', error.message);
+      
+      // Fallback: Just create a memo transaction to record season start
+      const memoData = {
+        t: 'SEASON_START',
+        s: seasonId,
+        endTime: Math.floor(endTime.getTime() / 1000),
+        admin: COMMISSION_WALLET,
+      };
+      
+      const memo = JSON.stringify(memoData);
+      const memoIx = new TransactionInstruction({
+        programId: this.memoProgram,
+        keys: [],
+        data: Buffer.from(memo, 'utf8'),
+      });
+      
+      tx.add(memoIx);
+      console.log('📝 Fallback season start memo added');
+    }
+    
     const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;
-    tx.feePayer = adminPublicKey;
+    tx.feePayer = new PublicKey(COMMISSION_WALLET);
+    return tx;
+  }
+
+  async endSeason(seasonId: number): Promise<Transaction> {
+    const tx = new Transaction();
+    
+    try {
+      // Try to use Anchor program if available
+      const programId = new PublicKey(PROGRAM_ID);
+      const programInfo = await this.connection.getAccountInfo(programId);
+      
+      if (programInfo && programInfo.executable) {
+        const [seasonPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('season'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+          programId
+        );
+        const [commissionPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from('commission'), new Uint8Array(new Uint32Array([seasonId]).buffer)],
+          programId
+        );
+
+        const adminPk = new PublicKey(COMMISSION_WALLET);
+        const treasuryPk = new PublicKey(TREASURY_WALLET);
+        
+        const ix = await (this.program as any).methods
+          .endSeason(seasonId)
+          .accounts({
+            admin: adminPk,
+            season: seasonPda,
+            commissionVault: commissionPda,
+            treasury: treasuryPk,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
+        
+        tx.add(ix);
+        console.log('✅ Anchor endSeason instruction added');
+      } else {
+        throw new Error('Program not found - using fallback');
+      }
+    } catch (error) {
+      console.log('⚠️ Anchor endSeason failed, using fallback:', error.message);
+      
+      // Fallback: Just create a memo transaction to record season end
+      const memoData = {
+        t: 'SEASON_END',
+        s: seasonId,
+        endTime: Math.floor(Date.now() / 1000),
+        admin: COMMISSION_WALLET,
+      };
+      
+      const memo = JSON.stringify(memoData);
+      const memoIx = new TransactionInstruction({
+        programId: this.memoProgram,
+        keys: [],
+        data: Buffer.from(memo, 'utf8'),
+      });
+      
+      tx.add(memoIx);
+      console.log('📝 Fallback season end memo added');
+    }
+    
+    const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = new PublicKey(COMMISSION_WALLET);
+    return tx;
+  }
+
+  async addExtraPrize(amountSOL: number): Promise<Transaction> {
+    const tx = new Transaction();
+    
+    try {
+      // Transfer SOL from admin wallet to treasury
+      const adminPk = new PublicKey(COMMISSION_WALLET);
+      const treasuryPk = new PublicKey(TREASURY_WALLET);
+      const amountLamports = Math.floor(amountSOL * LAMPORTS_PER_SOL);
+      
+      // Add transfer instruction
+      const transferIx = SystemProgram.transfer({
+        fromPubkey: adminPk,
+        toPubkey: treasuryPk,
+        lamports: amountLamports,
+      });
+      
+      tx.add(transferIx);
+      
+      // Add memo to record the extra prize
+      const memoData = {
+        t: 'EXTRA_PRIZE',
+        amount: amountSOL,
+        timestamp: Math.floor(Date.now() / 1000),
+        admin: COMMISSION_WALLET,
+      };
+      
+      const memo = JSON.stringify(memoData);
+      const memoIx = new TransactionInstruction({
+        programId: this.memoProgram,
+        keys: [],
+        data: Buffer.from(memo, 'utf8'),
+      });
+      
+      tx.add(memoIx);
+      console.log('✅ Extra prize transfer and memo added');
+      
+    } catch (error) {
+      console.error('❌ Error creating extra prize transaction:', error);
+      throw error;
+    }
+    
+    const { blockhash } = await this.connection.getLatestBlockhash('confirmed');
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = new PublicKey(COMMISSION_WALLET);
     return tx;
   }
 
