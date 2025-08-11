@@ -135,8 +135,8 @@ export const SeasonStatus: React.FC = () => {
 
     loadData();
 
-    // Refresh data every 30 seconds to avoid rate limiting
-    const interval = setInterval(loadData, 30000);
+    // Refresh data every 60 seconds to avoid rate limiting
+    const interval = setInterval(loadData, 60000);
 
     // Listen for ticket updates
     const handleTicketsUpdated = () => {

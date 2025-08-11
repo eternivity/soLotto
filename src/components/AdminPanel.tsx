@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { PublicKey } from '@solana/web3.js';
 
 import { COMMISSION_WALLET, TREASURY_WALLET } from '../constants';
 import { solanaService } from '../services/solanaService';
@@ -49,7 +50,7 @@ export const AdminPanel: React.FC = () => {
     };
 
     loadSeasonData();
-    const interval = setInterval(loadSeasonData, 30000); // Update every 30 seconds (reduced frequency)
+    const interval = setInterval(loadSeasonData, 60000); // Update every 60 seconds (further reduced)
     return () => clearInterval(interval);
   }, [isAdmin]);
 
@@ -63,9 +64,23 @@ export const AdminPanel: React.FC = () => {
       const durationMs = newSeasonDuration * 24 * 60 * 60 * 1000; // Convert days to milliseconds
       const endTime = new Date(Date.now() + durationMs);
       
-      await solanaService.startSeason(newSeasonId, endTime);
+      // Create and send the start season transaction
+      const transaction = await solanaService.startSeason(newSeasonId, endTime);
       
-      show('success', `Season ${newSeasonId} started successfully!`);
+      // Get the latest blockhash
+      const { blockhash } = await solanaService.getConnection().getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = new PublicKey(COMMISSION_WALLET);
+      
+      // Send the transaction
+      const signature = await solanaService.getConnection().sendTransaction(transaction);
+      console.log('✅ Season start transaction sent:', signature);
+      
+      // Wait for confirmation
+      await solanaService.getConnection().confirmTransaction(signature, 'confirmed');
+      console.log('✅ Season start transaction confirmed');
+      
+      show('success', `Season ${newSeasonId} started successfully! Transaction: ${signature.slice(0, 8)}...`);
       
       // Reload data
       setTimeout(() => {
@@ -86,7 +101,25 @@ export const AdminPanel: React.FC = () => {
     
     setIsLoading(true);
     try {
-      await solanaService.endSeason(seasonData.currentSeason);
+      // Create and send the end season transaction
+      const transaction = await solanaService.endSeason(seasonData.currentSeason);
+      
+      // Sign and send the transaction
+      const { publicKey } = useWallet();
+      if (!publicKey) throw new Error('Wallet not connected');
+      
+      // Get the latest blockhash
+      const { blockhash } = await solanaService.getConnection().getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+      
+      // Send the transaction
+      const signature = await solanaService.getConnection().sendTransaction(transaction);
+      console.log('✅ Season end transaction sent:', signature);
+      
+      // Wait for confirmation
+      await solanaService.getConnection().confirmTransaction(signature, 'confirmed');
+      console.log('✅ Season end transaction confirmed');
       
       // Update local state immediately
       setSeasonData(prev => ({
@@ -95,7 +128,7 @@ export const AdminPanel: React.FC = () => {
         endTime: new Date()
       }));
       
-      show('success', `Season ${seasonData.currentSeason} ended successfully!`);
+      show('success', `Season ${seasonData.currentSeason} ended successfully! Transaction: ${signature.slice(0, 8)}...`);
       
       // Reload data after 2 seconds
       setTimeout(() => {
@@ -122,9 +155,23 @@ export const AdminPanel: React.FC = () => {
         return;
       }
       
-      await solanaService.addExtraPrize(amountSOL);
+      // Create and send the extra prize transaction
+      const transaction = await solanaService.addExtraPrize(amountSOL);
       
-      show('success', `Added ${amountSOL} SOL to prize pool!`);
+      // Get the latest blockhash
+      const { blockhash } = await solanaService.getConnection().getLatestBlockhash('confirmed');
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = new PublicKey(COMMISSION_WALLET);
+      
+      // Send the transaction
+      const signature = await solanaService.getConnection().sendTransaction(transaction);
+      console.log('✅ Extra prize transaction sent:', signature);
+      
+      // Wait for confirmation
+      await solanaService.getConnection().confirmTransaction(signature, 'confirmed');
+      console.log('✅ Extra prize transaction confirmed');
+      
+      show('success', `Added ${amountSOL} SOL to prize pool! Transaction: ${signature.slice(0, 8)}...`);
       setExtraPrizeAmount('');
       
       // Reload data
