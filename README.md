@@ -97,11 +97,3 @@ MIT License
 4. Push yapın (`git push origin feature/amazing-feature`)
 5. Pull Request oluşturun
 
-## 📞 İletişim
-
-- GitHub: [@your-username](https://github.com/your-username)
-- Email: your-email@example.com
-
----
-
-**Not**: Bu proje eğitim amaçlıdır ve gerçek para ile oynanmamalıdır.
